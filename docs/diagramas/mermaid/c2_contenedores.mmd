@@ -1,0 +1,56 @@
+flowchart TB
+    AN["<b>Analista</b><br/><i>[Persona]</i>"]:::person
+    SUP["<b>Jefe de riesgos</b><br/><i>[Persona]</i>"]:::person
+
+    subgraph WN["WENANCE.AI — límite del sistema"]
+        direction TB
+        WEB["<b>Web App del analista</b><br/><i>[React + TypeScript]</i><br/>Kanban, KPIs, reglas en lenguaje natural,<br/>ficha del cliente, mapa, what-if, auditoría"]:::container
+        API["<b>API Backend</b><br/><i>[FastAPI · Python]</i><br/>REST + WebSocket, authN/authZ por rol,<br/>orquesta casos de uso"]:::container
+        BUS[("<b>Bus de eventos</b><br/><i>[Redis Streams]</i><br/>alerta.creada, riesgo.recalculado,<br/>estrategia.aprobada, accion.ejecutada")]:::db
+        ING["<b>Servicio de ingesta climática</b><br/><i>[Python · GeoPandas · scheduler]</i><br/>Agente M0: descarga, normaliza, detecta cambios"]:::container
+        RISK["<b>Motor de riesgo</b><br/><i>[Python · LightGBM · SHAP]</i><br/>Agente M1: exposición, vulnerabilidad,<br/>prob. de afectación de pago, escenarios"]:::container
+        OPT["<b>Optimizador</b><br/><i>[OR-Tools]</i><br/>Asigna acciones con capacidad y presupuesto"]:::container
+        ORQ["<b>Orquestador agéntico</b><br/><i>[LangGraph + LLM API]</i><br/>Agente M2: estrategias, traducción de reglas,<br/>planes de acción"]:::ai
+        POL["<b>Motor de políticas</b><br/><i>[OPA · Rego]</i><br/>Decide el modo (M0–M5), límites, 4-eyes,<br/>elegibilidad, equidad"]:::guard
+        EXE["<b>Ejecutor de acciones</b><br/><i>[Worker Python · idempotente]</i><br/>Agente M3/M4: dry run, lotes, rollback,<br/>rehidrata datos personales"]:::container
+        DB[("<b>Base de datos + feature store</b><br/><i>[PostgreSQL + PostGIS]</i><br/>Capas, perfiles versionados, estrategias, reglas, KPIs")]:::db
+        AUD[("<b>Log de auditoría</b><br/><i>[Postgres append-only + hash encadenado]</i><br/>Agente M5")]:::db
+    end
+
+    CLIMA["<b>SENAMHI · ENFEN · SIGRID</b><br/><i>[Externo]</i>"]:::ext
+    CORE["<b>Core bancario</b><br/><i>[Externo · API sandbox]</i>"]:::ext
+    LLMX["<b>Proveedor LLM</b><br/><i>[Externo]</i>"]:::ext
+    CH["<b>SMS / WhatsApp · CRM</b><br/><i>[Externo · simulado]</i>"]:::ext
+
+    AN -- "HTTPS" --> WEB
+    SUP -- "HTTPS" --> WEB
+    WEB -- "REST / WebSocket [JSON]" --> API
+    CLIMA -- "API / archivos" --> ING
+    ING -- "Escribe capas y alertas" --> DB
+    ING -- "alerta.creada" --> BUS
+    BUS -- "consume" --> RISK
+    RISK -- "Lee perfiles / escribe scores" --> DB
+    RISK -- "riesgo.recalculado" --> BUS
+    BUS -- "consume" --> OPT
+    OPT -- "Asignación óptima" --> ORQ
+    ORQ -- "Prompts seudonimizados" --> LLMX
+    ORQ -- "Valida propuestas y planes" --> POL
+    API -- "Casos de uso" --> ORQ
+    API -- "Consultas" --> DB
+    API -- "Decisiones del analista" --> POL
+    POL -- "Plan autorizado + modo por acción" --> EXE
+    EXE -- "Cada acción pide permiso" --> POL
+    EXE -- "API mínimo privilegio" --> CORE
+    EXE -- "Mensajes / agenda" --> CH
+    EXE -- "accion.ejecutada" --> BUS
+    RISK & ORQ & POL & EXE -- "Registra" --> AUD
+    classDef person fill:#0B5D66,stroke:#073E44,color:#FFFFFF,stroke-width:1.5px
+    classDef system fill:#0E7C86,stroke:#073E44,color:#FFFFFF,stroke-width:2px
+    classDef container fill:#E3F2F3,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef comp fill:#FFFFFF,stroke:#0E7C86,color:#0F1C20,stroke-width:1.3px
+    classDef ext fill:#EEF1F1,stroke:#8A9A9E,color:#3C4B50,stroke-width:1.2px,stroke-dasharray:5 3
+    classDef db fill:#FFFFFF,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef ai fill:#ECE9FC,stroke:#5B4BDB,color:#1E1650,stroke-width:1.5px
+    classDef guard fill:#FDECEC,stroke:#C42B3B,color:#5A0F17,stroke-width:1.6px
+    classDef human fill:#FFF4DC,stroke:#C98A0B,color:#4A3206,stroke-width:1.5px
+    classDef ok fill:#E4F4EC,stroke:#2F9E6B,color:#0E3B26,stroke-width:1.4px

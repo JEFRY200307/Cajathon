@@ -1,0 +1,37 @@
+flowchart TB
+    AN["<b>Analista de riesgos / negocios</b><br/><i>[Persona]</i><br/>Revisa cartera en riesgo, define reglas y KPIs, aprueba estrategias"]:::person
+    SUP["<b>Jefe de riesgos</b><br/><i>[Persona]</i><br/>Segunda aprobación (4-eyes), límites y kill switch"]:::person
+    ASE["<b>Asesor de negocios</b><br/><i>[Persona]</i><br/>Recibe visitas y llamadas agendadas"]:::person
+    CLI["<b>Microempresario</b><br/><i>[Persona · usuario indirecto]</i><br/>Recibe alertas, recomendaciones y ofertas"]:::person
+
+    WN["<b>WENANCE.AI</b><br/><i>[Sistema de software]</i><br/>Plataforma agéntica que anticipa el riesgo climático por negocio,<br/>genera estrategias preventivas y las ejecuta con supervisión humana y guardrails"]:::system
+
+    CLIMA["<b>SENAMHI · ENFEN</b><br/><i>[Sistema externo]</i><br/>Pronósticos, avisos y comunicados oficiales"]:::ext
+    SIGRID["<b>CENEPRED · SIGRID · INEI</b><br/><i>[Sistema externo]</i><br/>Capas de peligro y límites distritales"]:::ext
+    CORE["<b>Core bancario Caja Trujillo</b><br/><i>[Sistema externo · sandbox en hackathon]</i><br/>Créditos, cuotas, reprogramaciones, expedientes"]:::ext
+    CRM["<b>CRM / agenda de asesores</b><br/><i>[Sistema externo]</i>"]:::ext
+    MSG["<b>Canales SMS / WhatsApp</b><br/><i>[Sistema externo]</i>"]:::ext
+    LLM["<b>Proveedor de LLM</b><br/><i>[Sistema externo · API]</i><br/>Recibe solo datos seudonimizados"]:::ext
+    SEG["<b>Aseguradora</b><br/><i>[Sistema externo]</i><br/>Microseguros y seguros paramétricos"]:::ext
+
+    AN -- "Configura reglas, aprueba / rechaza / modifica<br/>[HTTPS]" --> WN
+    SUP -- "Aprueba 4-eyes, activa kill switch<br/>[HTTPS]" --> WN
+    WN -- "Asigna visitas / llamadas" --> CRM
+    CRM -. "Agenda" .-> ASE
+    WN -- "Envía alertas preventivas" --> MSG
+    MSG -. "SMS / WhatsApp" .-> CLI
+    CLIMA -- "Pronósticos y alertas [API / archivos]" --> WN
+    SIGRID -- "Capas geoespaciales [WMS / GeoJSON]" --> WN
+    WN -- "Lee cartera; ejecuta acciones autorizadas<br/>[API, mínimo privilegio]" --> CORE
+    WN -- "Prompts seudonimizados<br/>[HTTPS, tool calling]" --> LLM
+    WN -- "Solicita cotización / oferta" --> SEG
+    classDef person fill:#0B5D66,stroke:#073E44,color:#FFFFFF,stroke-width:1.5px
+    classDef system fill:#0E7C86,stroke:#073E44,color:#FFFFFF,stroke-width:2px
+    classDef container fill:#E3F2F3,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef comp fill:#FFFFFF,stroke:#0E7C86,color:#0F1C20,stroke-width:1.3px
+    classDef ext fill:#EEF1F1,stroke:#8A9A9E,color:#3C4B50,stroke-width:1.2px,stroke-dasharray:5 3
+    classDef db fill:#FFFFFF,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef ai fill:#ECE9FC,stroke:#5B4BDB,color:#1E1650,stroke-width:1.5px
+    classDef guard fill:#FDECEC,stroke:#C42B3B,color:#5A0F17,stroke-width:1.6px
+    classDef human fill:#FFF4DC,stroke:#C98A0B,color:#4A3206,stroke-width:1.5px
+    classDef ok fill:#E4F4EC,stroke:#2F9E6B,color:#0E3B26,stroke-width:1.4px

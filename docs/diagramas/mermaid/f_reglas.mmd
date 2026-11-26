@@ -1,0 +1,19 @@
+flowchart LR
+    t["Analista escribe:<br/>'no reprogramar a quien tenga<br/>más de 30 días de atraso'"]:::human --> tr["IA traduce a DSL<br/>{acción: A5, condición: dias_atraso &gt; 30,<br/>efecto: excluir}"]:::ai
+    tr --> amb{"¿Ambigua?"}:::comp
+    amb -- "Sí" --> cl["IA pide aclaración<br/>con opciones"]:::ai --> t
+    amb -- "No" --> pv{"¿Contradice<br/>política institucional?"}:::guard
+    pv -- "Sí" --> rj["Rechazo con motivo<br/>(la política prevalece)"]:::guard
+    pv -- "No" --> im["Vista previa de impacto:<br/>'afecta a 37 clientes'"]:::comp --> cf{"¿Confirma?"}:::human
+    cf -- "Sí" --> act["Activa regla v+1<br/>autor · fecha · versión"]:::ok --> rg["Regenera estrategias<br/>en Por revisar &lt; 1 min"]:::ai
+    cf -- "No" --> t
+    classDef person fill:#0B5D66,stroke:#073E44,color:#FFFFFF,stroke-width:1.5px
+    classDef system fill:#0E7C86,stroke:#073E44,color:#FFFFFF,stroke-width:2px
+    classDef container fill:#E3F2F3,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef comp fill:#FFFFFF,stroke:#0E7C86,color:#0F1C20,stroke-width:1.3px
+    classDef ext fill:#EEF1F1,stroke:#8A9A9E,color:#3C4B50,stroke-width:1.2px,stroke-dasharray:5 3
+    classDef db fill:#FFFFFF,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef ai fill:#ECE9FC,stroke:#5B4BDB,color:#1E1650,stroke-width:1.5px
+    classDef guard fill:#FDECEC,stroke:#C42B3B,color:#5A0F17,stroke-width:1.6px
+    classDef human fill:#FFF4DC,stroke:#C98A0B,color:#4A3206,stroke-width:1.5px
+    classDef ok fill:#E4F4EC,stroke:#2F9E6B,color:#0E3B26,stroke-width:1.4px

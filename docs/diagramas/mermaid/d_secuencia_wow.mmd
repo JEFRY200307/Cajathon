@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    participant M0 as Ingesta (M0)
+    participant M1 as Motor de riesgo (M1)
+    participant IA as Orquestador IA (M2)
+    participant AN as Analista
+    participant POL as Motor de políticas
+    participant AG as Ejecutor (M3/M4)
+    participant CORE as Core sandbox
+    participant M5 as Auditoría (M5)
+    M0->>M1: Comunicado ENFEN: lluvias intensas costa norte
+    M1->>M1: Recalcula exposición, vulnerabilidad y pago por escenario
+    M1->>IA: Clientes sobre umbral + features + causas SHAP
+    IA->>IA: Optimiza con capacidad, aplica reglas y KPIs
+    IA->>POL: Pre-valida propuestas
+    IA->>AN: Tarjetas "Por revisar" en el Kanban
+    AN->>IA: Nueva regla NL: "no reprogramar si atraso > 30 días"
+    IA->>AN: Regla traducida + impacto → estrategias regeneradas
+    AN->>POL: Aprueba lote (Sí)
+    POL->>AG: Plan autorizado + modo por acción
+    AG->>CORE: A1/A2/A3 automáticas (M4) y A4 aprobada (M3)
+    CORE-->>AG: OK
+    AG->>POL: A5 reprogramación S/ 18,400 (supera tope)
+    POL-->>AN: BLOQUEADA → escalar a jefe de riesgos (4-eyes)
+    AG->>M5: Registra propuesta, aprobación, regla evaluada y resultado
+    M5->>AN: KPIs en vivo: cobertura, tiempo alerta→acción, pérdida evitada

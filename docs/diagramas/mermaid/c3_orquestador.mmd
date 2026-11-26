@@ -1,0 +1,46 @@
+flowchart LR
+    API["<b>API Backend</b><br/><i>[Contenedor]</i>"]:::container
+    OPT["<b>Optimizador</b><br/><i>[Contenedor]</i>"]:::container
+    POL["<b>Motor de políticas</b><br/><i>[Contenedor]</i>"]:::guard
+    LLMX["<b>Proveedor LLM</b><br/><i>[Externo]</i>"]:::ext
+    DB[("<b>PostgreSQL / feature store</b>")]:::db
+    AUD[("<b>Log de auditoría</b>")]:::db
+
+    subgraph ORQ["Orquestador agéntico — componentes"]
+        direction TB
+        SG["<b>Grafo de estados</b><br/><i>[LangGraph StateGraph]</i><br/>Detectado → Propuesta → Aprobada →<br/>En ejecución → Monitoreo"]:::ai
+        PSE["<b>Seudonimizador</b><br/><i>[Python]</i><br/>Quita DNI, teléfono y cuenta; IDs tokenizados"]:::comp
+        GEN["<b>Generador de estrategias</b><br/><i>[LLM · tool calling]</i><br/>Redacta estrategia + justificación"]:::ai
+        NLR["<b>Traductor de reglas NL → DSL</b><br/><i>[LLM + gramática]</i><br/>'no reprogramar si atraso &gt; 30 d' → regla"]:::ai
+        TOOLS["<b>Registro de herramientas</b><br/><i>[Catálogo A1–A7]</i><br/>Lista blanca, firmas tipadas"]:::comp
+        VAL["<b>Validador de salida</b><br/><i>[JSON Schema + reglas]</i><br/>Esquema, catálogo, cifras verificables;<br/>máx. 2 reintentos → revisión manual"]:::guard
+        PLAN["<b>Planificador de acciones</b><br/><i>[Python]</i><br/>Estrategia aprobada → plan con fechas T-n"]:::comp
+        FB["<b>Aprendizaje / feedback</b><br/><i>[Python]</i><br/>Motivos de rechazo y resultados → ajustes"]:::comp
+        DEG["<b>Modo degradado</b><br/><i>[Plantillas]</i><br/>Si el LLM falla: estrategias por reglas"]:::comp
+    end
+
+    OPT --> SG
+    API -- "regenerar / aprobar / regla NL" --> SG
+    SG --> PSE --> GEN
+    GEN -- "prompt" --> LLMX
+    GEN --> TOOLS
+    GEN --> VAL
+    NLR --> VAL
+    SG --> NLR
+    VAL -- "pre-chequeo" --> POL
+    VAL -- "propuesta válida" --> SG
+    SG --> PLAN -- "plan para autorizar" --> POL
+    GEN -. "fallo / timeout" .-> DEG --> VAL
+    FB -- "lee resultados" --> DB
+    SG -- "estado" --> DB
+    SG -- "eventos" --> AUD
+    classDef person fill:#0B5D66,stroke:#073E44,color:#FFFFFF,stroke-width:1.5px
+    classDef system fill:#0E7C86,stroke:#073E44,color:#FFFFFF,stroke-width:2px
+    classDef container fill:#E3F2F3,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef comp fill:#FFFFFF,stroke:#0E7C86,color:#0F1C20,stroke-width:1.3px
+    classDef ext fill:#EEF1F1,stroke:#8A9A9E,color:#3C4B50,stroke-width:1.2px,stroke-dasharray:5 3
+    classDef db fill:#FFFFFF,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef ai fill:#ECE9FC,stroke:#5B4BDB,color:#1E1650,stroke-width:1.5px
+    classDef guard fill:#FDECEC,stroke:#C42B3B,color:#5A0F17,stroke-width:1.6px
+    classDef human fill:#FFF4DC,stroke:#C98A0B,color:#4A3206,stroke-width:1.5px
+    classDef ok fill:#E4F4EC,stroke:#2F9E6B,color:#0E3B26,stroke-width:1.4px

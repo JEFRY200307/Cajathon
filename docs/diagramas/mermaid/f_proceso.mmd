@@ -1,0 +1,43 @@
+flowchart TB
+    subgraph L1["1 · Integración de información — Agente M0"]
+        direction LR
+        a1["Ingesta programada<br/>SENAMHI · ENFEN · SIGRID"]:::container --> a2["Normaliza a distrito<br/>y polígono"]:::container --> a3{"¿Cambio<br/>significativo?"}:::comp
+    end
+    subgraph L2["2 · Evaluación del riesgo — Agente M1"]
+        direction LR
+        b1["Actualiza perfiles<br/>(feature store)"]:::container --> b2["Score híbrido<br/>reglas + ML por escenario"]:::container --> b3["Explica causas (SHAP)<br/>e incertidumbre"]:::container --> b4{"¿Supera<br/>umbral?"}:::comp
+    end
+    subgraph L3["3 · Generación de estrategias — Agente M2"]
+        direction LR
+        r["Reglas y KPIs del analista<br/>(lenguaje natural)"]:::human --> c1["Optimiza acciones<br/>con capacidad"]:::ai --> c2["LLM redacta estrategia<br/>personalizada"]:::ai --> c3{"¿Valida esquema,<br/>catálogo y reglas?"}:::guard
+    end
+    subgraph L4["4 · Supervisión humana — Kanban"]
+        direction LR
+        d1["Tarjeta en<br/>Por revisar"]:::human --> d2{"Analista: Sí / No /<br/>Modificar"}:::human --> d3["Plan de acción"]:::container
+    end
+    subgraph L5["5 · Ejecución agéntica — M3 / M4"]
+        direction LR
+        e2{"Motor de políticas"}:::guard --> e3["Ejecuta en core<br/>dry run → real"]:::ok
+        e2 --> e4["4-eyes: jefe<br/>de riesgos"]:::human
+        e2 --> e5["Bloqueada:<br/>escala al analista"]:::guard
+    end
+    subgraph L6["6 · Monitoreo y retroalimentación — M5"]
+        direction LR
+        f1[("Auditoría inmutable")]:::db --> f2["Mide resultado:<br/>contacto, pago, seguro"]:::ok --> f3["Actualiza KPIs y<br/>aprende de rechazos"]:::ok
+    end
+    a3 -- "Sí: alerta climática" --> b1
+    b4 -- "Sí" --> r
+    c3 -- "Sí" --> d1
+    d3 --> e2
+    e3 --> f1
+    f3 -. "feedback a la IA" .-> c1
+    classDef person fill:#0B5D66,stroke:#073E44,color:#FFFFFF,stroke-width:1.5px
+    classDef system fill:#0E7C86,stroke:#073E44,color:#FFFFFF,stroke-width:2px
+    classDef container fill:#E3F2F3,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef comp fill:#FFFFFF,stroke:#0E7C86,color:#0F1C20,stroke-width:1.3px
+    classDef ext fill:#EEF1F1,stroke:#8A9A9E,color:#3C4B50,stroke-width:1.2px,stroke-dasharray:5 3
+    classDef db fill:#FFFFFF,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef ai fill:#ECE9FC,stroke:#5B4BDB,color:#1E1650,stroke-width:1.5px
+    classDef guard fill:#FDECEC,stroke:#C42B3B,color:#5A0F17,stroke-width:1.6px
+    classDef human fill:#FFF4DC,stroke:#C98A0B,color:#4A3206,stroke-width:1.5px
+    classDef ok fill:#E4F4EC,stroke:#2F9E6B,color:#0E3B26,stroke-width:1.4px

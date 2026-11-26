@@ -1,0 +1,45 @@
+flowchart LR
+    subgraph NAV["Navegador del analista"]
+        SPA["Web App React<br/>(build estático)"]:::container
+    end
+    subgraph CLOUD["Nube · contenedores Docker (demo: docker compose)"]
+        direction TB
+        subgraph APP["Nodo aplicación"]
+            APIc["api · FastAPI"]:::container
+            ORQc["orquestador · LangGraph"]:::ai
+            EXEc["ejecutor · worker"]:::container
+            OPAc["opa · Rego"]:::guard
+        end
+        subgraph DATA["Nodo datos"]
+            PG[("PostgreSQL + PostGIS")]:::db
+            RD[("Redis Streams")]:::db
+        end
+        subgraph JOBS["Nodo jobs"]
+            INGc["ingesta · cron"]:::container
+            RISKc["riesgo · batch / on-event"]:::container
+        end
+    end
+    subgraph EXT["Externos"]
+        LLMd["API LLM"]:::ext
+        COREd["Core sandbox (mock)"]:::ext
+        SRC["SENAMHI · ENFEN · SIGRID"]:::ext
+    end
+    SPA -- "HTTPS / WSS" --> APIc
+    APIc --> ORQc & OPAc & PG
+    ORQc --> LLMd
+    ORQc --> OPAc
+    EXEc --> OPAc
+    EXEc --> COREd
+    INGc --> SRC
+    INGc & RISKc --> PG
+    INGc & RISKc & EXEc --> RD
+    classDef person fill:#0B5D66,stroke:#073E44,color:#FFFFFF,stroke-width:1.5px
+    classDef system fill:#0E7C86,stroke:#073E44,color:#FFFFFF,stroke-width:2px
+    classDef container fill:#E3F2F3,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef comp fill:#FFFFFF,stroke:#0E7C86,color:#0F1C20,stroke-width:1.3px
+    classDef ext fill:#EEF1F1,stroke:#8A9A9E,color:#3C4B50,stroke-width:1.2px,stroke-dasharray:5 3
+    classDef db fill:#FFFFFF,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef ai fill:#ECE9FC,stroke:#5B4BDB,color:#1E1650,stroke-width:1.5px
+    classDef guard fill:#FDECEC,stroke:#C42B3B,color:#5A0F17,stroke-width:1.6px
+    classDef human fill:#FFF4DC,stroke:#C98A0B,color:#4A3206,stroke-width:1.5px
+    classDef ok fill:#E4F4EC,stroke:#2F9E6B,color:#0E3B26,stroke-width:1.4px

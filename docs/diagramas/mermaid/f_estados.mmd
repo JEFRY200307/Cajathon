@@ -1,0 +1,20 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Detectado: riesgo climático > umbral
+    Detectado --> Propuesta_IA: IA genera estrategia
+    Propuesta_IA --> Propuesta_IA: analista MODIFICA
+    Propuesta_IA --> Rechazada: analista dice NO
+    Propuesta_IA --> Aprobada: analista dice SÍ
+    Aprobada --> Pendiente_4eyes: acción A5 sobre umbral / A6
+    Pendiente_4eyes --> Aprobada: jefe aprueba
+    Pendiente_4eyes --> Propuesta_IA: jefe rechaza
+    Aprobada --> En_ejecucion: agente inicia plan
+    En_ejecucion --> Bloqueada: guardrail
+    Bloqueada --> Propuesta_IA: escalar / replantear
+    En_ejecucion --> Revertida: kill switch / rollback
+    En_ejecucion --> Ejecutada
+    Ejecutada --> Monitoreo
+    Monitoreo --> Cerrada: KPI medido
+    Rechazada --> [*]
+    Cerrada --> [*]
+    Revertida --> [*]

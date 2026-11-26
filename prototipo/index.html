@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WENANCE.AI · Prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* VOICE: sala de control sobria de una caja municipal; datos primero, calma ante la alerta.
+   IDEA: tablero de operaciones de riesgo — Kanban + KPIs como la pizarra de turno de un analista.
+   PICTURE: el propio tablero con tarjetas vivas; el mapa de la costa norte como segunda vista.
+   COLOUR and TYPE: Corriente #0B5D66 dominante, niebla neutra, Sol #F5B83D solo para avisos; escala de riesgo fija. DM Sans + Inter + JetBrains Mono.
+   LAYOUT: barra superior, KPIs, riel lateral, tres columnas; se apila bajo 900px. */
+:root{
+  --corriente-900:#073E44;--corriente-700:#0B5D66;--corriente-500:#0E7C86;--corriente-300:#6FC1C4;--corriente-100:#CFEBEC;--corriente-50:#EEF8F8;
+  --sol-500:#F5B83D;--sol-100:#FFF4DC;--sol-900:#4A3206;
+  --ia-500:#5B4BDB;--ia-100:#ECE9FC;
+  --bajo:#2F9E6B;--medio:#D69A06;--alto:#E5622B;--critico:#C42B3B;
+  --bajo-bg:#E4F4EC;--medio-bg:#FDF3D7;--alto-bg:#FDEADF;--critico-bg:#FBE4E6;
+  --bg:#F3F6F5;--surface:#FFFFFF;--surface-2:#F7FAF9;--ink:#0F1C20;--ink-2:#2A393E;--muted:#5E6E73;--line:#DCE3E2;--line-2:#EDF1F0;
+  --shadow-sm:0 1px 2px rgba(15,28,32,.06),0 1px 1px rgba(15,28,32,.04);
+  --shadow-md:0 6px 18px rgba(15,28,32,.10),0 2px 4px rgba(15,28,32,.05);
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-pill:999px;
+  --f-display:"DM Sans",Inter,system-ui,sans-serif;--f-ui:Inter,system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+:root[data-theme=dark]{
+  --corriente-700:#3FB0B6;--corriente-500:#55C3C8;--corriente-100:#123A3E;--corriente-50:#0F2A2D;--corriente-900:#9FE0E2;
+  --sol-100:#3A2C0D;--sol-900:#FBE3AE;--ia-100:#262150;--ia-500:#A79DFF;
+  --bajo-bg:#12301F;--medio-bg:#33290A;--alto-bg:#3A2112;--critico-bg:#3C151A;
+  --bg:#0B1416;--surface:#111D20;--surface-2:#15232700;--ink:#E7EEEE;--ink-2:#C9D5D6;--muted:#93A4A7;--line:#253539;--line-2:#1B2A2D;
+  --shadow-sm:none;--shadow-md:0 8px 24px rgba(0,0,0,.45);color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --corriente-700:#3FB0B6;--corriente-500:#55C3C8;--corriente-100:#123A3E;--corriente-50:#0F2A2D;--corriente-900:#9FE0E2;
+  --sol-100:#3A2C0D;--sol-900:#FBE3AE;--ia-100:#262150;--ia-500:#A79DFF;
+  --bajo-bg:#12301F;--medio-bg:#33290A;--alto-bg:#3A2112;--critico-bg:#3C151A;
+  --bg:#0B1416;--surface:#111D20;--surface-2:#152327;--ink:#E7EEEE;--ink-2:#C9D5D6;--muted:#93A4A7;--line:#253539;--line-2:#1B2A2D;
+  --shadow-sm:none;--shadow-md:0 8px 24px rgba(0,0,0,.45);color-scheme:dark}}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-ui);overflow-x:clip}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--corriente-500);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-size:12px}
+/* top bar */
+.top{display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--corriente-900);color:#fff;flex-wrap:wrap}
+:root[data-theme=dark] .top{background:#06282C}
+.brand{display:flex;align-items:center;gap:9px;font:700 19px var(--f-display);letter-spacing:-.01em}
+.brand b{color:var(--sol-500);font-weight:700}
+.org{font-size:12px;opacity:.75;border-left:1px solid rgba(255,255,255,.25);padding-left:12px}
+.spacer{flex:1}
+.alert{display:none;align-items:center;gap:8px;background:var(--sol-500);color:#3A2600;padding:6px 12px;border-radius:var(--r-pill);font-weight:600;font-size:13px}
+.alert.on{display:flex}
+.alert .dot{width:8px;height:8px;border-radius:50%;background:#7A1A10;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.mode{display:flex;align-items:center;gap:6px;font-size:12px;background:rgba(255,255,255,.12);padding:6px 10px;border-radius:var(--r-pill)}
+.mode i{width:8px;height:8px;border-radius:50%;background:#62D69C}
+.mode.safe i{background:#FF6B6B}
+.seg{display:flex;background:rgba(255,255,255,.12);border-radius:var(--r-pill);padding:3px}
+.seg button{border:0;background:none;color:#fff;padding:5px 11px;border-radius:var(--r-pill);font-size:12px;min-height:30px}
+.seg button.on{background:#fff;color:var(--corriente-900)}
+.kill{border:1.5px solid #FF8A8A;background:transparent;color:#FFD0D0;border-radius:var(--r-pill);padding:6px 12px;font-weight:600;font-size:12px;min-height:34px}
+.kill.on{background:#C42B3B;color:#fff;border-color:#C42B3B}
+.clock{font-family:var(--f-mono);font-size:12px;opacity:.85}
+/* demo guide */
+.guide{display:flex;gap:6px;align-items:center;padding:8px 18px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;font-size:12px}
+.guide .st{display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--muted);padding:4px 8px;border-radius:var(--r-pill)}
+.guide .st i{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:700}
+.guide .st.done{color:var(--bajo)}.guide .st.done i{background:var(--bajo);border-color:var(--bajo);color:#fff}
+.guide .st.now{color:var(--ink);background:var(--corriente-50);font-weight:600}.guide .st.now i{border-color:var(--corriente-500);color:var(--corriente-700)}
+.guide .sep{color:var(--line)}.guide>*{flex:none}nav.side a{flex:none}
+/* shell */
+.shell{display:grid;grid-template-columns:200px minmax(0,1fr);min-height:calc(100vh - 100px)}
+nav.side{border-right:1px solid var(--line);background:var(--surface);padding:14px 10px;display:flex;flex-direction:column;gap:4px}
+nav.side a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-md);color:var(--ink-2);text-decoration:none;font-weight:500;min-height:42px}
+nav.side a:hover{background:var(--surface-2)}
+nav.side a.on{background:var(--corriente-50);color:var(--corriente-700);font-weight:600}
+nav.side svg{width:18px;height:18px;flex:none}
+nav.side .foot{margin-top:auto;font-size:11px;color:var(--muted);padding:10px 12px;line-height:1.5}
+main{padding:16px 18px 40px;display:flex;flex-direction:column;gap:14px}
+.view{display:none;flex-direction:column;gap:14px}.view.on{display:flex}
+h1{font:700 22px/1.15 var(--f-display);margin:0;letter-spacing:-.01em}
+h2{font:700 16px/1.2 var(--f-display);margin:0}
+h3{font:600 13px/1.2 var(--f-display);margin:0;color:var(--muted)}
+.sub{color:var(--muted);font-size:13px}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 14px;box-shadow:var(--shadow-sm)}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font:700 22px/1.1 var(--f-display);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi .d{font-size:11.5px;color:var(--muted);margin-top:3px}
+.kpi .d b{font-weight:600}.up{color:var(--bajo)}.dn{color:var(--critico)}
+.kpi .bar{height:5px;border-radius:9px;background:var(--line-2);margin-top:7px;overflow:hidden}.kpi .bar i{display:block;height:100%;background:var(--corriente-500);transition:width .6s}
+.kpi.flash{animation:flash 1s}
+@keyframes flash{30%{border-color:var(--corriente-500);box-shadow:0 0 0 3px var(--corriente-100)}}
+/* toolbar */
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,input[type=text],textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:8px 10px;min-height:38px;font-size:14px}
+textarea{width:100%;resize:vertical;font-size:15px}
+/* buttons */
+.btn{border:1px solid transparent;border-radius:var(--r-md);padding:8px 14px;font-weight:600;font-size:13px;min-height:38px;display:inline-flex;align-items:center;gap:6px;justify-content:center;transition:background .15s,transform .05s}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--corriente-700);color:#fff}.btn.primary:hover{background:var(--corriente-900)}
+:root[data-theme=dark] .btn.primary{color:#062023}
+.btn.sec{background:var(--surface);border-color:var(--line);color:var(--ink)}.btn.sec:hover{border-color:var(--corriente-500)}
+.btn.ghost{background:transparent;color:var(--corriente-700)}.btn.ghost:hover{background:var(--corriente-50)}
+.btn.yes{background:var(--bajo);color:#fff}.btn.no{background:var(--surface);border-color:var(--critico);color:var(--critico)}.btn.mod{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.btn.sol{background:var(--sol-500);color:#3A2600}
+.btn.danger{background:var(--critico);color:#fff}
+.btn.sm{min-height:32px;padding:5px 10px;font-size:12px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+/* board */
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.col{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px;min-height:300px}
+:root[data-theme=dark] .col{background:#0E191B}
+.colh{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 10px}
+.colh h2{font-size:14px}.count{background:var(--line-2);color:var(--ink-2);border-radius:var(--r-pill);padding:1px 9px;font-size:12px;font-weight:600}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--lvl,var(--line));border-radius:var(--r-md);padding:11px 12px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:7px}
+.card.new{animation:rise .5s both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+.card.regen{animation:regen 1.4s}
+@keyframes regen{20%{box-shadow:0 0 0 3px var(--ia-500)}}
+.card.lv-critico{--lvl:var(--critico)}.card.lv-alto{--lvl:var(--alto)}.card.lv-medio{--lvl:var(--medio)}
+.card.blocked{box-shadow:0 0 0 1.5px var(--critico)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ct{font:700 14.5px/1.25 var(--f-display)}
+.cs{font-size:12px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r-pill);white-space:nowrap}
+.b-critico{background:var(--critico-bg);color:var(--critico)}.b-alto{background:var(--alto-bg);color:var(--alto)}.b-medio{background:var(--medio-bg);color:var(--medio)}.b-bajo{background:var(--bajo-bg);color:var(--bajo)}
+.b-ia{background:var(--ia-100);color:var(--ia-500)}.b-n{background:var(--line-2);color:var(--ink-2)}.b-sol{background:var(--sol-100);color:var(--sol-900)}.b-c{background:var(--corriente-50);color:var(--corriente-700)}
+.causes{margin:0;padding:0;list-style:none;font-size:12.5px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px}
+.causes li::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--lvl);margin:0 7px 2px 1px}
+.acts{display:flex;gap:4px;flex-wrap:wrap}
+.act{font:500 11px var(--f-mono);padding:2px 6px;border-radius:5px;border:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+.act.m4{border-color:var(--bajo);color:var(--bajo)}.act.m3{border-color:var(--sol-500);color:var(--sol-900)}.act.m2{border-color:var(--ia-500);color:var(--ia-500)}
+.impact{font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:7px}
+.impact b{font-variant-numeric:tabular-nums}
+.cbtns{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px}
+.prog{display:flex;flex-direction:column;gap:5px;font-size:12px}
+.pr{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center}
+.pbar{height:7px;border-radius:9px;background:var(--line-2);overflow:hidden;display:flex}
+.pbar i{display:block;height:100%;background:var(--bajo);transition:width .4s}.pbar i.pe{background:var(--sol-500)}.pbar i.bl{background:var(--critico)}
+.pn{font-family:var(--f-mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.flag{font-size:12px;border-radius:var(--r-sm);padding:6px 8px;display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.flag.red{background:var(--critico-bg);color:var(--critico)}.flag.amb{background:var(--sol-100);color:var(--sol-900)}.flag.grn{background:var(--bajo-bg);color:var(--bajo)}
+.empty{border:1.5px dashed var(--line);border-radius:var(--r-md);padding:22px 14px;text-align:center;color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.outc{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px}
+.outc span{color:var(--muted)}.outc b{text-align:right;font-variant-numeric:tabular-nums}
+/* calm state hero */
+.calm{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:center}
+.calm p{margin:6px 0 0;color:var(--ink-2);max-width:62ch}
+.feed{font-size:12.5px;display:flex;flex-direction:column;gap:6px}
+.feed div{display:flex;gap:8px;align-items:center;padding:7px 10px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line-2)}
+.feed .ok{color:var(--bajo);font-weight:700}
+/* drawer & modal */
+.scrim{position:fixed;inset:0;background:rgba(7,20,22,.45);display:none;z-index:40}.scrim.on{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);z-index:50;transform:translateX(105%);transition:transform .25s ease;display:flex;flex-direction:column;box-shadow:var(--shadow-md)}
+.drawer.on{transform:none}
+.dh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.db{padding:16px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;flex:1}
+.df{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}
+.x{border:0;background:var(--line-2);width:36px;height:36px;border-radius:50%;font-size:18px;flex:none}
+.sec{display:flex;flex-direction:column;gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.box{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;background:var(--surface-2)}
+.meter{display:grid;grid-template-columns:110px minmax(0,1fr) 54px;gap:8px;align-items:center;font-size:12.5px}
+.meter .t{height:8px;background:var(--line-2);border-radius:9px;position:relative;overflow:hidden}
+.meter .t i{position:absolute;inset:0 auto 0 0;border-radius:9px}
+.meter .t s{position:absolute;top:0;bottom:0;background:rgba(15,28,32,.18)}
+.meter b{text-align:right;font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px}
+.kv span{color:var(--muted)}.kv b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.chk{display:grid;grid-template-columns:22px 52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--line-2);font-size:13px}
+.chk input{width:18px;height:18px;accent-color:var(--corriente-700)}
+.whatif .wr{display:grid;grid-template-columns:110px minmax(0,1fr) 84px;gap:8px;align-items:center;font-size:12.5px;margin:4px 0}
+.whatif .wr .t{height:14px;background:var(--line-2);border-radius:4px;overflow:hidden}.whatif .wr .t i{display:block;height:100%}
+input[type=range]{width:100%;accent-color:var(--corriente-700)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line-2);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.modal{position:fixed;z-index:60;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,94vw);background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-md);padding:18px;display:none;flex-direction:column;gap:12px}
+.modal.on{display:flex}
+.toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:70;width:min(520px,92vw)}
+.toast{background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:var(--r-md);font-size:13px;box-shadow:var(--shadow-md);animation:rise .3s both;display:flex;gap:8px}
+.toast.red{background:var(--critico);color:#fff}.toast.ia{background:var(--ia-500);color:#fff}
+/* rules */
+.two{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-pill);padding:6px 11px;font-size:12px;min-height:32px}
+.chip:hover{border-color:var(--corriente-500)}
+pre{background:#0F1C20;color:#CFEBEC;border-radius:var(--r-md);padding:12px;font:12px/1.5 var(--f-mono);margin:0;overflow-x:auto}
+.rule{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+.rule .id{font:600 11px var(--f-mono);background:var(--corriente-50);color:var(--corriente-700);padding:3px 6px;border-radius:5px}
+.rule small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.kpirow{display:grid;grid-template-columns:minmax(0,1fr) 120px 60px;gap:10px;align-items:center;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line-2)}
+/* map */
+.mapwrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;align-items:start}
+.fig{position:relative;min-height:560px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.fig svg{position:absolute;inset:0;width:100%;height:100%}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:7px 9px;border-radius:8px;display:none;max-width:220px;z-index:3}
+/* agent */
+.modes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.md{font-family:var(--f-ui);border:1px solid var(--line);border-radius:var(--r-md);padding:10px;background:var(--surface);font-size:12px;display:flex;flex-direction:column;gap:4px}
+.md b{font:700 15px var(--f-display)}.md.act{border-color:var(--bajo);box-shadow:inset 0 0 0 1px var(--bajo)}.md.off{opacity:.45}
+.log{font:12px/1.5 var(--f-mono);max-height:420px;overflow:auto}
+.log div{padding:5px 0;border-bottom:1px solid var(--line-2);display:grid;grid-template-columns:52px 92px minmax(0,1fr) 74px;gap:8px}
+.log .h{color:var(--muted)}
+.tag-ok{color:var(--bajo)}.tag-bl{color:var(--critico)}.tag-pe{color:var(--medio)}.tag-ia{color:var(--ia-500)}
+.note{font-size:11.5px;color:var(--muted)}
+@media(max-width:1200px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.modes{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.shell{grid-template-columns:1fr}nav.side{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}nav.side a{white-space:nowrap}nav.side .foot{display:none}
+.board,.two,.mapwrap,.calm{grid-template-columns:1fr}.org,.clock{display:none}}
+@media(max-width:600px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.modes{grid-template-columns:repeat(2,minmax(0,1fr))}.cbtns{grid-template-columns:1fr 1fr 1fr}.cbtns .ghost{grid-column:1/-1}.top{gap:8px}.fig{min-height:440px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#0E7C86"/><path d="M20 6.5C20 6.5 9.5 18 9.5 24.5a10.5 10.5 0 0 0 21 0C30.5 18 20 6.5 20 6.5Z" fill="#fff"/><path d="M13.8 27l4.4-4.4 3.2 3.2 5.6-5.8" stroke="#0B5D66" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="20" r="2.2" fill="#F5B83D"/></svg><span>wenance<b>.ai</b></span></div>
+  <div class="org">Caja Trujillo · Riesgos · Macro región norte</div>
+  <div class="alert" id="alertChip"><span class="dot"></span><span id="alertTxt">ENFEN: lluvias intensas costa norte</span></div>
+  <div class="spacer"></div>
+  <span class="clock" id="clock"></span>
+  <div class="mode" id="modeChip"><i></i><span id="modeTxt">Agente: M4 acotado</span></div>
+  <div class="seg" role="group" aria-label="Rol"><button id="roleA" class="on">Analista</button><button id="roleJ">Jefe de riesgos</button></div>
+  <button class="kill" id="killBtn" title="Pone al agente en Modo seguro">Kill switch</button>
+</header>
+<div class="guide" id="guide"></div>
+<div class="shell">
+  <nav class="side" id="nav">
+    <a href="#tablero" data-v="tablero"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg>Tablero</a>
+    <a href="#mapa" data-v="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>Mapa de riesgo</a>
+    <a href="#reglas" data-v="reglas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M4 12h16M4 18h7"/><circle cx="17" cy="6" r="2.5"/><circle cx="14" cy="18" r="2.5"/></svg>Reglas y KPIs</a>
+    <a href="#agente" data-v="agente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>Agente y auditoría</a>
+    <div class="foot">Prototipo de hackathon · cartera sintética de 5,000 clientes en La Libertad, Lambayeque y Piura · core bancario simulado.</div>
+  </nav>
+  <main>
+    <section class="kpis" id="kpis"></section>
+
+    <section class="view" id="v-tablero">
+      <div id="calm"></div>
+      <div class="tools" id="tools">
+        <h1 style="margin-right:auto">Estrategias preventivas</h1>
+        <select id="fReg" aria-label="Región"><option value="">Todas las regiones</option><option>Piura</option><option>Lambayeque</option><option>La Libertad</option></select>
+        <select id="fSec" aria-label="Sector"></select>
+        <select id="fLvl" aria-label="Nivel"><option value="">Todos los niveles</option><option value="critico">Crítico</option><option value="alto">Alto</option></select>
+        <div class="seg" style="background:var(--line-2)" role="group" aria-label="Escenario"><button id="scM" class="on" style="color:var(--ink)">Moderado</button><button id="scF" style="color:var(--ink)">Fuerte</button></div>
+      </div>
+      <div class="board">
+        <div class="col"><div class="colh"><h2>Por revisar</h2><span class="count" id="n1">0</span></div><div class="cards" id="c1"></div></div>
+        <div class="col"><div class="colh"><h2>Aprobadas · en ejecución</h2><span class="count" id="n2">0</span></div><div class="cards" id="c2"></div></div>
+        <div class="col"><div class="colh"><h2>Monitoreo · resultado</h2><span class="count" id="n3">0</span></div><div class="cards" id="c3"></div></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-mapa">
+      <div><h1>Mapa de riesgo climático de la cartera</h1><div class="sub">Burbujas por distrito: tamaño = saldo en riesgo alto o crítico; color = nivel predominante. Toca un distrito para filtrar el tablero.</div></div>
+      <div class="mapwrap">
+        <div class="fig" id="mapFig"><svg id="map"></svg><div class="tip" id="tip"></div></div>
+        <div class="panel"><h2>Distritos más expuestos</h2><div class="legend"><span><i style="background:var(--critico)"></i>Crítico</span><span><i style="background:var(--alto)"></i>Alto</span><span><i style="background:var(--medio)"></i>Medio</span><span><i style="background:var(--bajo)"></i>Bajo</span></div><div style="overflow-x:auto"><table id="distTbl"></table></div><div class="note">Capas de peligro: SIGRID (CENEPRED). Aviso: ENFEN / SENAMHI. Datos simulados para la demo.</div></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-reglas">
+      <div><h1>Reglas y KPIs que guían a la IA</h1><div class="sub">Escribe en lenguaje natural. La IA la traduce a una regla estructurada, la valida contra las políticas de la Caja y te muestra a cuántos clientes afecta antes de activarla.</div></div>
+      <div class="two">
+        <div class="panel">
+          <h2>Nueva regla</h2>
+          <textarea id="nl" rows="3" placeholder="Ej.: no reprogramar a quien tenga más de 30 días de atraso"></textarea>
+          <div class="chips" id="ex"></div>
+          <div class="row"><button class="btn primary" id="parseBtn">Traducir con IA</button><span class="note">Las políticas institucionales siempre prevalecen sobre las reglas del analista.</span></div>
+          <div id="parseOut"></div>
+        </div>
+        <div class="panel"><h2>Reglas activas</h2><div id="rulesList"></div></div>
+      </div>
+      <div class="two">
+        <div class="panel"><h2>KPIs personalizados</h2><div id="kpiList"></div>
+          <div class="row"><input type="text" id="kpiName" placeholder="Nombre del KPI" style="flex:2"><input type="text" id="kpiGoal" placeholder="Meta %" style="flex:1;width:90px"><button class="btn sec" id="kpiAdd">Agregar</button></div></div>
+        <div class="panel"><h2>Políticas institucionales (guardrails)</h2><table><tbody id="polTbl"></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-agente">
+      <div><h1>Agente y auditoría</h1><div class="sub">El LLM propone; el motor de políticas autoriza; el humano aprueba lo que la política exige; el ejecutor actúa con mínimo privilegio; el auditor registra todo.</div></div>
+      <div class="modes" id="modes"></div>
+      <div class="two">
+        <div class="panel"><div class="row" style="justify-content:space-between"><h2>Registro de auditoría (solo adición)</h2><span class="note" id="chain"></span></div><div class="log" id="log"></div></div>
+        <div class="panel"><h2>Catálogo de acciones</h2><table><thead><tr><th>ID</th><th>Acción</th><th>Modo</th><th>Aprobación</th></tr></thead><tbody id="catTbl"></tbody></table></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Ficha"></aside>
+<div class="modal" id="modal"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+{
+/* ---------- utilidades ---------- */
+const $=s=>document.querySelector(s);
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtS=n=>'S/ '+Math.round(n).toLocaleString('es-PE');
+const fmtK=n=>n>=1e6?'S/ '+(n/1e6).toFixed(2)+' M':n>=1e3?'S/ '+(n/1e3).toFixed(0)+' k':'S/ '+Math.round(n);
+const pct=x=>(x*100).toFixed(0)+'%';
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const sig=x=>1/(1+Math.exp(-x));
+function rngf(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const LVL={critico:'Crítico',alto:'Alto',medio:'Medio',bajo:'Bajo'};
+
+/* ---------- catálogo y políticas ---------- */
+const CAT={
+ A1:{n:'Alerta preventiva SMS/WhatsApp',r:'Bajo',m:'M4',ap:'Automática con plantilla aprobada y consentimiento'},
+ A2:{n:'Agendar visita o llamada del asesor',r:'Bajo',m:'M4',ap:'Automática dentro de la capacidad del asesor'},
+ A3:{n:'Etiquetar en watchlist climática',r:'Bajo',m:'M4',ap:'Automática'},
+ A4:{n:'Ofrecer microseguro / seguro paramétrico',r:'Medio',m:'M3',ap:'Aprobación del analista'},
+ A5:{n:'Reprogramar cuota / periodo de gracia',r:'Medio-alto',m:'M3',ap:'Analista + 4-eyes sobre S/ 25,000'},
+ A6:{n:'Preparar expediente de crédito preventivo',r:'Alto',m:'M3',ap:'Siempre 4-eyes; desembolso por flujo normal'},
+ A7:{n:'Recomendar ajuste de límites / provisiones',r:'Alto',m:'M2',ap:'Solo recomendación, nunca ejecución'}};
+const POL=[
+ ['P-01','Lista blanca A1–A7; el modo lo asigna el motor de políticas, no el LLM'],
+ ['P-02','A5 individual > S/ 25,000 requiere segunda aprobación (4-eyes)'],
+ ['P-03','Tope diario de reprogramación por agencia: S/ 60,000'],
+ ['P-04','Máximo 2 mensajes por cliente por semana'],
+ ['P-05','Sin reprogramación automática con atraso > 30 días'],
+ ['P-06','Prohibido reducir o negar crédito por la sola ubicación (equidad)'],
+ ['P-07','Sin consentimiento de contacto ⇒ no contactar'],
+ ['P-08','Incertidumbre alta ⇒ no elegible para M4'],
+ ['P-09','LLM recibe solo datos seudonimizados; salida validada con esquema']];
+
+/* ---------- datos sintéticos ---------- */
+const DIST=[
+ ['Piura','Piura',-5.19,-80.63,.78,'Inundación',420],['Piura','Castilla',-5.20,-80.60,.74,'Inundación',300],['Piura','Catacaos',-5.27,-80.68,.9,'Inundación',260],['Piura','Sullana',-4.90,-80.69,.6,'Inundación',330],['Piura','Chulucanas',-5.09,-80.16,.7,'Huaico',200],['Piura','Sechura',-5.56,-80.82,.72,'Inundación',150],['Piura','Paita',-5.09,-81.11,.42,'Inundación',140],
+ ['Lambayeque','Chiclayo',-6.77,-79.84,.55,'Inundación',430],['Lambayeque','J. L. Ortiz',-6.75,-79.84,.62,'Inundación',260],['Lambayeque','Lambayeque',-6.70,-79.91,.66,'Inundación',230],['Lambayeque','Ferreñafe',-6.64,-79.79,.52,'Inundación',170],['Lambayeque','Motupe',-6.15,-79.71,.6,'Huaico',120],['Lambayeque','Olmos',-5.98,-79.75,.48,'Sequía',120],
+ ['La Libertad','Trujillo',-8.11,-79.03,.45,'Inundación',460],['La Libertad','El Porvenir',-8.08,-78.99,.86,'Huaico',300],['La Libertad','La Esperanza',-8.06,-79.05,.62,'Huaico',260],['La Libertad','Florencia de Mora',-8.08,-79.02,.72,'Huaico',170],['La Libertad','Chepén',-7.22,-79.43,.56,'Inundación',160],['La Libertad','Pacasmayo',-7.40,-79.57,.4,'Inundación',100],['La Libertad','Virú',-8.41,-78.75,.52,'Inundación',140],['La Libertad','Ascope',-7.71,-79.11,.46,'Inundación',110],['La Libertad','Otuzco',-7.90,-78.57,.58,'Huaico',90]];
+const SEC=[
+ ['Bodega y comercio',.55,.55,{Piura:2,Lambayeque:2,'La Libertad':3.4}],['Agricultura · arroz',.85,.25,{Piura:1.2,Lambayeque:2.4,'La Libertad':.8}],['Agricultura · mango y limón',.8,.5,{Piura:2.2,Lambayeque:1,'La Libertad':.5}],
+ ['Ganadería menor',.65,.3,{Piura:.8,Lambayeque:.8,'La Libertad':.7}],['Mototaxi y transporte',.5,0,{Piura:1,Lambayeque:1,'La Libertad':1.2}],['Taller y manufactura',.45,.1,{Piura:.6,Lambayeque:.7,'La Libertad':1.2}],
+ ['Restaurante y servicios',.5,.6,{Piura:.9,Lambayeque:1,'La Libertad':1.2}],['Pesca artesanal',.6,.7,{Piura:.8,Lambayeque:.3,'La Libertad':.3}]];
+const R=rngf(2026);
+const pickW=(arr,w)=>{let t=0;for(const x of w)t+=x;let r=R()*t;for(let i=0;i<arr.length;i++){r-=w[i];if(r<=0)return arr[i]}return arr[arr.length-1]};
+const CL=[];
+for(let i=0;i<5000;i++){
+  const d=pickW(DIST,DIST.map(x=>x[6]));const s=pickW(SEC,SEC.map(x=>x[3][d[0]]));
+  const ingreso=Math.round(1800+R()**1.6*9000);const saldo=Math.min(48000,Math.round(ingreso*(1+R()**1.2*5)));
+  const plazo=8+Math.floor(R()*24);const cuota=Math.round(saldo/plazo*1.15);
+  const huaico=d[5]==='Huaico';
+  CL.push({id:'CLI-'+String(10000+Math.floor(R()*89999)),reg:d[0],dist:d[1],lat:d[2]+(R()-.5)*.06,lon:d[3]+(R()-.5)*.06,haz:d[4],tipo:d[5],sec:s[0],sens:s[1],
+   per:R()<s[2],unico:R()<.72,seguro:R()<.18,cons:R()<.93,ahorro:R()<.35,dq:Math.round(huaico?40+R()**1.4*1500:80+R()**1.2*3200),
+   ingreso,saldo,cuota,ci:cuota/ingreso,atraso:R()<.8?0:Math.floor(R()**1.5*75),plazo,prec:R()<.12?'baja':'alta',msgs:R()<.08?2:0,u:R()});
+}
+const SCEN={base:.32,moderado:1,fuerte:1.3};
+function score(c,f){
+  const ex=clamp(c.haz*f*(.5+.5*Math.exp(-c.dq/650)),0,1);
+  const vu=clamp(.18+c.sens*.32+(c.per?.14:0)+(c.unico?.1:0)-(c.seguro?.2:0)-(c.ahorro?.1:0),0,1);
+  const ciS=clamp((c.ci-.22)*2.2,0,1);
+  const p=sig(-5.45+3.6*ex+2.6*vu+2.2*ciS+Math.min(c.atraso,60)/30*.9+(c.u-.5)*.6);
+  const w=.05+(c.prec==='baja'?.12:0)+c.u*.05;
+  const lvl=p>=.42?'critico':p>=.27?'alto':p>=.15?'medio':'bajo';
+  return{ex,vu,p,lo:clamp(p-w,0,1),hi:clamp(p+w,0,1),wide:w>.14,lvl,el:p*c.saldo*.45};
+}
+function causes(c){
+  const out=[];
+  if(c.dq<450)out.push([2.2-c.dq/400,`A ${c.dq} m de ${c.tipo==='Huaico'?'quebrada':'río o dren'}`]);
+  if(c.haz>.7)out.push([1.4,`Peligro de ${c.tipo.toLowerCase()} muy alto (SIGRID)`]);
+  if(c.per)out.push([1.2,'Inventario o cosecha perecible']);
+  if(c.ci>.32)out.push([c.ci*3,`Cuota/ingreso ${pct(c.ci)}`]);
+  if(!c.seguro)out.push([.9,'Sin seguro']);
+  if(c.unico)out.push([.7,'Local único']);
+  if(c.atraso>0)out.push([.5+c.atraso/30,`Atraso de ${c.atraso} días`]);
+  if(c.sens>.75)out.push([1,'Actividad dependiente del clima']);
+  return out.sort((a,b)=>b[0]-a[0]).slice(0,3).map(x=>x[1]);
+}
+
+/* ---------- estado ---------- */
+const S={alert:false,scen:'moderado',kill:false,role:'A',strat:[],rules:[{id:'R-012',t:'Máximo 15 visitas por asesor por semana',k:'cap',v:15,a:'Ana Ruiz',d:'02/12/2026',ver:1}],
+ kpis:[{n:'% de agricultores de Lambayeque con microseguro',g:40,f:'agroSeg'},{n:'Saldo reprogramado preventivo / saldo en riesgo alto (tope 15%)',g:15,f:'reprog'}],
+ log:[],hash:'0000000000',sim:7*60+40,alertAt:null,firstAct:null,exec:{ok:0,bl:0,pe:0},agencyA5:{},touched:new Set(),decided:0,acceptedPlain:0,steps:{},filter:{reg:'',sec:'',lvl:'',dist:''},seq:0,regenCount:0,avoided:0,pending:null};
+let SC=CL.map(c=>score(c,SCEN.base));
+function rescore(){const f=S.alert?SCEN[S.scen]:SCEN.base;SC=CL.map(c=>score(c,f))}
+
+function fnv(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(16).padStart(8,'0')}
+const hhmm=m=>String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(Math.floor(m%60)).padStart(2,'0');
+function audit(actor,tipo,det,cls=''){S.hash=fnv(S.hash+actor+tipo+det).slice(0,8);S.log.unshift({t:hhmm(S.sim),actor,tipo,det,cls,h:S.hash});if(curView==='agente')renderAgent()}
+function toast(m,cls=''){const t=document.createElement('div');t.className='toast '+cls;t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),4200)}
+
+/* ---------- generación de estrategias (IA M2 simulada) ---------- */
+function ruleVal(k){const r=S.rules.find(x=>x.k===k);return r?r.v:null}
+function genStrategies(){
+  const ex30=ruleVal('noA5atraso'),prefSeg=ruleVal('prefSeg'),prio=ruleVal('prio'),cap=ruleVal('cap')||15;
+  const risky=CL.map((c,i)=>({c,s:SC[i],i})).filter(x=>x.s.lvl==='alto'||x.s.lvl==='critico');
+  const indiv=risky.filter(x=>x.s.lvl==='critico'&&x.c.per&&x.c.saldo>12000).sort((a,b)=>b.s.el-a.s.el).slice(0,4);
+  const indivSet=new Set(indiv.map(x=>x.i));
+  const groups={};
+  for(const x of risky){if(indivSet.has(x.i))continue;const k=x.c.dist+'|'+x.c.sec;(groups[k]=groups[k]||[]).push(x)}
+  let segs=Object.entries(groups).filter(([k,v])=>v.length>=6).map(([k,v])=>({k,m:v,el:v.reduce((a,x)=>a+x.s.el,0)}));
+  segs.forEach(g=>{if(prio&&g.m[0].c.sec.toLowerCase().includes(prio.sec)&&(!prio.reg||g.m[0].c.reg===prio.reg))g.el*=3});
+  segs.sort((a,b)=>b.el-a.el);segs=segs.slice(0,9);
+  const out=[];
+  const mk=(scope,members,title)=>{
+    const crit=members.filter(x=>x.s.lvl==='critico').length,lvl=crit/members.length>.35||scope==='cliente'?'critico':'alto';
+    const acts=[];const cons=members.filter(x=>x.c.cons);
+    if(cons.length)acts.push({id:'A1',n:cons.length,ids:cons.map(x=>x.i),when:'T-10 días',on:true});
+    const vis=members.filter(x=>x.s.lvl==='critico'||scope==='cliente');const advisors=3;
+    if(vis.length)acts.push({id:'A2',n:Math.min(vis.length,cap*advisors),ids:vis.slice(0,cap*advisors).map(x=>x.i),when:'T-7 días',on:true,capped:vis.length>cap*advisors?vis.length-cap*advisors:0});
+    acts.push({id:'A3',n:members.length,ids:members.map(x=>x.i),when:'Inmediato',on:true});
+    const ns=members.filter(x=>!x.c.seguro);if(ns.length)acts.push({id:'A4',n:ns.length,ids:ns.map(x=>x.i),when:'T-7 días',on:true});
+    let rp=members.filter(x=>x.c.ci>.3&&(!prefSeg||x.s.lvl==='critico'));
+    const excluded=ex30!=null?rp.filter(x=>x.c.atraso>ex30).length:0;
+    if(ex30!=null)rp=rp.filter(x=>x.c.atraso<=ex30);
+    if(rp.length)acts.push({id:'A5',n:rp.length,ids:rp.map(x=>x.i),when:'Condicional: alerta roja',on:true});
+    if(scope==='cliente'&&members[0].c.per)acts.push({id:'A6',n:1,ids:[members[0].i],when:'T-5 días',on:true});
+    const el=members.reduce((a,x)=>a+x.s.el,0);
+    if(scope==='segmento'&&el>90000)acts.push({id:'A7',n:1,ids:[],when:'Informe semanal',on:true});
+    const cc={};members.forEach(x=>causes(x.c).forEach(t=>{const key=t.replace(/\d+/g,'#');(cc[key]=cc[key]||{t,n:0}).n++}));
+    let cz=scope==='cliente'?causes(members[0].c):Object.values(cc).sort((a,b)=>b.n-a.n).slice(0,3).map(o=>o.t.includes('A ')&&o.t.includes(' m de')?`${pct(o.n/members.length)} a menos de 450 m de ${o.t.includes('quebrada')?'quebrada':'río'}`:o.t.startsWith('Atraso')?`Clientes con atraso (${pct(o.n/members.length)})`:o.t.startsWith('Cuota')?`Cuota/ingreso prom. ${pct(members.reduce((a,x)=>a+x.c.ci,0)/members.length)}`:`${o.t} (${pct(o.n/members.length)})`);
+    const red=(acts.some(a=>a.id==='A5')?5:2)+(acts.some(a=>a.id==='A4')?3:0)+(acts.some(a=>a.id==='A2')?2:0);
+    const wide=members.filter(x=>x.s.wide).length/members.length;
+    const conf=wide>.25?'baja':wide>.1?'media':'alta';
+    const m0=members[0].c;
+    return{id:'EST-'+(1000+(++S.seq)),scope,title,reg:m0.reg,dist:m0.dist,sec:m0.sec,tipo:m0.tipo,lvl,members:members.map(x=>x.i),acts,causes:cz,el,red:[red,red+6],conf,excluded,
+      prio:!!(prio&&m0.sec.toLowerCase().includes(prio.sec)&&(!prio.reg||m0.reg===prio.reg)),state:'rev',mod:false,obj:scope==='cliente'?'Proteger inventario y continuidad antes del pico':'Acompañar al segmento antes del pico de lluvias'};
+  };
+  indiv.forEach(x=>out.push(mk('cliente',[x],`${x.c.sec} · ${x.c.dist}`)));
+  segs.forEach(g=>out.push(mk('segmento',g.m.sort((a,b)=>b.s.el-a.s.el),`${g.m[0].c.sec} · ${g.m[0].c.dist}`)));
+  return out.sort((a,b)=>(b.prio-a.prio)||(b.el-a.el));
+}
+function regenerate(reason){
+  const keep=S.strat.filter(s=>s.state!=='rev');const old=new Map(S.strat.filter(s=>s.state==='rev').map(s=>[s.title,s]));
+  const keepT=new Set(keep.map(s=>s.title));
+  const fresh=genStrategies().filter(s=>!keepT.has(s.title));
+  let changed=0;fresh.forEach(s=>{const o=old.get(s.title);if(!o||JSON.stringify(o.acts.map(a=>a.id+a.n))!==JSON.stringify(s.acts.map(a=>a.id+a.n))){s.regen=true;changed++}});
+  S.strat=[...fresh,...keep];S.regenCount=changed;
+  if(reason)audit('IA (M2)','Regenera',`${fresh.length} estrategias por revisar · ${changed} cambiaron (${reason})`,'tag-ia');
+  return changed;
+}
+
+/* ---------- KPIs ---------- */
+function inFilter(c){const f=S.filter;return(!f.reg||c.reg===f.reg)&&(!f.sec||c.sec===f.sec)&&(!f.dist||c.dist===f.dist)}
+function kpiData(){
+  let expS=0,expN=0,el=0;const hi=[];
+  CL.forEach((c,i)=>{if(!inFilter(c))return;const s=SC[i];if(s.lvl==='alto'||s.lvl==='critico'){if(S.filter.lvl&&s.lvl!==S.filter.lvl)return;expS+=c.saldo;expN++;hi.push(i)}el+=s.el});
+  const cov=hi.length?hi.filter(i=>S.touched.has(i)).length/hi.length:0;
+  const t=S.firstAct!=null?S.firstAct-S.alertAt:null;
+  return{expS,expN,el,cov,t};
+}
+let lastK={};
+function renderKPIs(){
+  const k=kpiData();const dec=S.decided?S.acceptedPlain/S.decided:null;
+  const tiles=[
+   ['exp','Cartera expuesta (alto + crítico)',fmtK(k.expS),`<b>${k.expN.toLocaleString('es-PE')}</b> clientes`+(S.alert?` · escenario ${S.scen}`:' · sin alerta activa')],
+   ['el','Pérdida esperada',fmtK(k.el),S.avoided?`<b class="up">−${fmtK(S.avoided)}</b> evitada (simulada)`:'sin estrategias ejecutadas'],
+   ['cov','Cobertura preventiva',pct(k.cov),'riesgo alto con ≥1 acción ejecutada',k.cov],
+   ['t','Tiempo alerta → acción',k.t==null?'—':(k.t<60?Math.round(k.t)+' min':(k.t/60).toFixed(1)+' h'),S.alert?'desde el comunicado ENFEN':'esperando alerta'],
+   ['ex','Acciones ejecutadas',S.exec.ok.toLocaleString('es-PE'),`<b class="dn">${S.exec.bl}</b> bloqueadas · <b>${S.exec.pe}</b> en 4-eyes`],
+   ['pk','Días al pico pronosticado',S.alert?(S.scen==='fuerte'?'9':'12'):'—',dec==null?'aceptación IA: sin decisiones':`aceptación IA sin cambios: <b>${pct(dec)}</b>`]];
+  $('#kpis').innerHTML=tiles.map(t=>`<div class="kpi${lastK[t[0]]!=null&&lastK[t[0]]!==t[2]?' flash':''}"><div class="l">${t[1]}</div><div class="v">${t[2]}</div><div class="d">${t[3]}</div>${t[4]!=null?`<div class="bar"><i style="width:${t[4]*100}%"></i></div>`:''}</div>`).join('');
+  tiles.forEach(t=>lastK[t[0]]=t[2]);
+}
+
+/* ---------- tablero ---------- */
+function stratVisible(s){const f=S.filter;return(!f.reg||s.reg===f.reg)&&(!f.sec||s.sec===f.sec)&&(!f.lvl||s.lvl===f.lvl)&&(!f.dist||s.dist===f.dist)}
+function actChips(s){return s.acts.filter(a=>a.on).map(a=>`<span class="act ${CAT[a.id].m.toLowerCase()}" title="${esc(CAT[a.id].n)} · ${CAT[a.id].m}">${a.id}${a.n>1?' ×'+a.n:''}</span>`).join('')}
+function cardRev(s){
+  return `<div class="card lv-${s.lvl}${s.isNew?' new':''}${s.regen?' regen':''}" data-id="${s.id}">
+  <div class="row"><span class="badge b-${s.lvl}">${LVL[s.lvl]}</span><span class="badge b-n">${s.scope==='cliente'?'Cliente '+esc(CL[s.members[0]].id):'Segmento · '+s.members.length+' clientes'}</span>${s.prio?'<span class="badge b-sol">Prioridad analista</span>':''}${s.mod?'<span class="badge b-c">Modificada</span>':''}<span class="badge b-ia" style="margin-left:auto">IA · conf. ${s.conf}</span></div>
+  <div><div class="ct">${esc(s.title)}</div><div class="cs">${esc(s.tipo)} · ${esc(s.reg)} · ${s.id}</div></div>
+  <ul class="causes">${s.causes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>
+  <div class="acts">${actChips(s)}</div>
+  ${s.excluded?`<div class="flag amb">Regla aplicada: ${s.excluded} cliente(s) sin reprogramación por atraso</div>`:''}
+  <div class="impact"><span>Impago <b>−${s.red[0]} a −${s.red[1]} pp</b></span><span>Pérdida esperada <b>${fmtK(s.el)}</b></span></div>
+  <div class="cbtns"><button class="btn yes sm" data-a="yes">Sí</button><button class="btn no sm" data-a="no">No</button><button class="btn mod sm" data-a="mod">Modificar</button><button class="btn ghost sm" data-a="open">Ficha</button></div></div>`;
+}
+function cardExec(s){
+  const rows=s.run.map(r=>{const t=r.total||1;return `<div class="pr"><span class="act ${CAT[r.id].m.toLowerCase()}">${r.id}</span><div class="pbar"><i style="width:${r.ok/t*100}%"></i><i class="pe" style="width:${r.pe/t*100}%"></i><i class="bl" style="width:${r.bl/t*100}%"></i></div><span class="pn">${r.id==='A7'?(r.ok?'enviada':'…'):`${r.ok}/${r.total}`}</span></div>`}).join('');
+  const flags=s.run.flatMap(r=>r.flags||[]).map(f=>`<div class="flag ${f.c}"><span>${esc(f.t)}</span>${f.btn&&S.role==='A'&&!f.done?`<button class="btn sm sec" data-a="esc" data-r="${f.rid}">Escalar a jefe</button>`:''}${f.btn&&S.role==='J'&&!f.done?`<span class="row"><button class="btn sm yes" data-a="jok" data-r="${f.rid}">Autorizar</button><button class="btn sm no" data-a="jno" data-r="${f.rid}">Rechazar</button></span>`:''}${f.done?`<b>${esc(f.done)}</b>`:''}</div>`).join('');
+  const bl=s.run.some(r=>r.bl>0&&!r.resolved);
+  return `<div class="card lv-${s.lvl}${bl?' blocked':''}" data-id="${s.id}">
+  <div class="row"><span class="badge b-${s.lvl}">${LVL[s.lvl]}</span><span class="badge b-n">${s.scope==='cliente'?'Cliente':'Segmento · '+s.members.length}</span><span class="badge ${S.kill?'b-critico':'b-c'}" style="margin-left:auto">${S.kill?'Pausada · modo seguro':s.done?'Plan completado':'Agente ejecutando'}</span></div>
+  <div><div class="ct">${esc(s.title)}</div><div class="cs">${s.id} · aprobada ${s.apAt} por ${s.apBy}</div></div>
+  <div class="prog">${rows}</div>${flags}
+  <div class="row" style="justify-content:space-between"><span class="note">verde ejecutada · ámbar 4-eyes · rojo bloqueada</span><button class="btn ghost sm" data-a="open">Ficha</button></div></div>`;
+}
+function cardMon(s){
+  const o=s.out;
+  return `<div class="card lv-${s.lvl}" data-id="${s.id}">
+  <div class="row"><span class="badge b-bajo">Resultado medido</span><span class="badge b-ia" style="margin-left:auto">Retroalimentado a la IA</span></div>
+  <div><div class="ct">${esc(s.title)}</div><div class="cs">${s.id} · ${s.members.length} cliente(s)</div></div>
+  <div class="outc"><span>Clientes contactados</span><b>${o.cont}</b><span>Visitas realizadas</span><b>${o.vis}</b><span>Microseguros aceptados</span><b>${o.seg}</b><span>Reprogramaciones aplicadas</span><b>${o.rep}</b><span>Pérdida esperada evitada</span><b class="up">${fmtK(o.av)}</b></div>
+  <div class="row" style="justify-content:flex-end"><button class="btn ghost sm" data-a="open">Ficha</button>${s.closed?'<span class="badge b-n">Cerrada</span>':'<button class="btn sec sm" data-a="close">Cerrar</button>'}</div></div>`;
+}
+function renderCalm(){
+  if(S.alert){$('#calm').innerHTML='';return}
+  $('#calm').innerHTML=`<div class="calm"><div><h1>Sin riesgo climático relevante en la cartera</h1><p>El agente M0 vigila SENAMHI, ENFEN y SIGRID cada 30 minutos. Última evaluación ${hhmm(S.sim)} · 5,000 negocios financiados en Piura, Lambayeque y La Libertad. Cuando llegue un aviso, recalcula el riesgo de cada negocio y propone estrategias aquí.</p>
+  <div class="row" style="margin-top:14px"><button class="btn sol" id="fire">Simular comunicado ENFEN</button><span class="note">Inicia la demo: alerta → cartera en riesgo → estrategias IA</span></div></div>
+  <div class="feed"><div><span class="ok">✓</span> SENAMHI · pronóstico 72 h sin avisos <span class="note" style="margin-left:auto">${hhmm(S.sim-12)}</span></div><div><span class="ok">✓</span> ENFEN · estado de vigilancia El Niño costero <span class="note" style="margin-left:auto">${hhmm(S.sim-40)}</span></div><div><span class="ok">✓</span> SIGRID · capas de peligro vigentes <span class="note" style="margin-left:auto">02/12</span></div><div><span class="ok">✓</span> Cartera · 5,000 perfiles en feature store <span class="note" style="margin-left:auto">${hhmm(S.sim-5)}</span></div></div></div>`;
+  $('#fire').onclick=fireAlert;
+}
+function renderBoard(){
+  renderCalm();
+  $('#tools').style.display=S.alert?'':'none';$('.board').style.display=S.alert?'':'none';
+  const vis=S.strat.filter(stratVisible);
+  const c1=vis.filter(s=>s.state==='rev'),c2=vis.filter(s=>s.state==='exec'),c3=vis.filter(s=>s.state==='mon');
+  $('#c1').innerHTML=c1.length?c1.map(cardRev).join(''):`<div class="empty">${S.filter.dist||S.filter.reg||S.filter.sec||S.filter.lvl?'Sin estrategias para este filtro.<button class="btn sec sm" id="clr">Quitar filtros</button>':'Todo revisado. La IA publicará nuevas estrategias si cambia la alerta.'}</div>`;
+  $('#c2').innerHTML=c2.length?c2.map(cardExec).join(''):'<div class="empty">Aprueba una estrategia y el agente la ejecutará aquí, bajo guardrails.</div>';
+  $('#c3').innerHTML=c3.length?c3.map(cardMon).join(''):'<div class="empty">Los planes completados muestran aquí su efecto medido.</div>';
+  $('#n1').textContent=c1.length;$('#n2').textContent=c2.length;$('#n3').textContent=c3.length;
+  S.strat.forEach(s=>{s.isNew=false;s.regen=false});
+  const clr=$('#clr');if(clr)clr.onclick=()=>{S.filter={reg:'',sec:'',lvl:'',dist:''};$('#fReg').value='';$('#fSec').value='';$('#fLvl').value='';renderAll()};
+}
+$('main').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-a]');const card=e.target.closest('.card');if(!b||!card)return;
+  const s=S.strat.find(x=>x.id===card.dataset.id);if(!s)return;const a=b.dataset.a;
+  if(a==='yes')approve(s);else if(a==='no')rejectModal(s);else if(a==='mod')openDrawer(s,true);else if(a==='open')openDrawer(s);
+  else if(a==='close'){s.closed=true;audit('Analista','Cierra',`${s.id} cerrada con KPI medido`);renderBoard()}
+  else if(a==='esc'||a==='jok'||a==='jno')flagAction(s,b.dataset.r,a);
+});
+
+/* ---------- alerta ---------- */
+function fireAlert(){
+  S.alert=true;S.alertAt=S.sim;$('#alertChip').classList.add('on');
+  audit('M0 Monitor','Alerta',`Comunicado ENFEN: probabilidad alta de lluvias intensas costa norte (horizonte 12 días)`,'tag-pe');
+  rescore();audit('M1 Riesgo','Recalcula',`5,000 perfiles · escenario ${S.scen} · ${SC.filter(s=>s.lvl==='alto'||s.lvl==='critico').length} sobre umbral`);
+  S.strat=genStrategies();S.strat.forEach(s=>s.isNew=true);
+  audit('IA (M2)','Propone',`${S.strat.length} estrategias validadas (esquema, catálogo A1–A7, reglas activas)`,'tag-ia');
+  S.steps.alert=true;toast('Alerta ENFEN recibida: riesgo recalculado y '+S.strat.length+' estrategias listas para revisar','ia');
+  renderAll();
+}
+function setScen(sc){S.scen=sc;$('#scM').classList.toggle('on',sc==='moderado');$('#scF').classList.toggle('on',sc==='fuerte');if(!S.alert){renderAll();return}
+  rescore();const n=regenerate('cambio de escenario a '+sc);toast(`Escenario ${sc}: ${n} estrategias actualizadas`,'ia');renderAll()}
+
+/* ---------- aprobación y ejecución (motor de políticas + agente) ---------- */
+function approve(s){
+  if(S.kill){toast('Modo seguro activo: el agente solo recomienda. Desactiva el kill switch para ejecutar.','red');return}
+  s.state='exec';s.apAt=hhmm(S.sim);s.apBy=S.role==='A'?'Analista':'Jefe de riesgos';S.decided++;if(!s.mod)S.acceptedPlain++;S.steps.approve=true;
+  audit(s.apBy,'Aprueba',`${s.id} ${s.title} · ${s.acts.filter(a=>a.on).map(a=>a.id).join(' ')}`);
+  s.run=s.acts.filter(a=>a.on).map(a=>({id:a.id,total:a.id==='A7'?1:a.n,ids:a.ids,ok:0,pe:0,bl:0,q:[],flags:[]}));
+  // decisión del motor de políticas por unidad
+  for(const r of s.run){
+    if(r.id==='A7'){r.q=[{k:'rec'}];continue}
+    if(r.id==='A6'){r.q=[{k:'pe',why:'P-02/A6: expediente siempre requiere 4-eyes'}];continue}
+    for(const i of r.ids){const c=CL[i];
+      if(r.id==='A1'&&c.msgs>=2){r.q.push({k:'bl',i,why:'P-04 tope de mensajes semanales'});continue}
+      if(r.id==='A5'){
+        if(c.atraso>30){r.q.push({k:'bl',i,why:'P-05 atraso > 30 días'});continue}
+        if(c.saldo>25000){r.q.push({k:'pe',i,why:'P-02 monto > S/ 25,000'});continue}
+        r.q.push({k:'a5',i});continue}
+      r.q.push({k:'ok',i});
+    }
+  }
+  S.touchedPending=true;renderAll();
+  toast(`Plan ${s.id} autorizado por el motor de políticas: el agente inicia la ejecución`);
+  audit('Motor de políticas','Autoriza',`${s.id}: A1–A3 en M4; ${s.run.filter(r=>['A4','A5','A6'].includes(r.id)).map(r=>r.id).join(' ')||'—'} en M3; A7 en M2`);
+}
+function flagAction(s,rid,a){
+  const r=s.run.find(x=>x.id===rid);const f=r.flags.find(x=>x.rid===rid&&x.btn&&!x.done);if(!f)return;const markAll=t=>r.flags.forEach(x=>{if(x.c!=='grn')x.done=t});
+  if(a==='esc'){f.t=f.t.replace(/ — .*$/,'')+' — escalada al jefe de riesgos';audit('Analista','Escala',`${s.id} ${rid}: ${f.t}`,'tag-pe');toast('Escalado. Cambia el rol a "Jefe de riesgos" para decidir (4-eyes).');}
+  else if(a==='jok'){markAll('Autorizada por jefe');const n=r.pe+r.bl;r.ok+=n;S.exec.ok+=n;S.exec.pe=Math.max(0,S.exec.pe-r.pe);if(r.bl)S.exec.bl=Math.max(0,S.exec.bl-r.bl);r.pe=0;r.bl=0;r.resolved=true;r.held.forEach(i=>S.touched.add(i));audit('Jefe de riesgos','4-eyes OK',`${s.id} ${rid}: ${n} acción(es) autorizadas como excepción documentada`,'tag-ok');toast('Segunda aprobación registrada: el agente ejecuta '+n+' acción(es)')}
+  else{markAll('Rechazada por jefe');r.resolved=true;S.exec.pe=Math.max(0,S.exec.pe-r.pe);audit('Jefe de riesgos','4-eyes NO',`${s.id} ${rid}: rechazada, vuelve a la IA para replantear`,'tag-bl')}
+  renderAll();
+}
+function tick(){
+  S.sim+=1;$('#clock').textContent='Lun 15 dic · '+hhmm(S.sim);
+  if(S.kill)return;
+  let changed=false;
+  for(const s of S.strat){if(s.state!=='exec'||s.done)continue;
+    for(const r of s.run){if(!r.q.length)continue;changed=true;
+      const batch=r.q.splice(0,Math.max(1,Math.ceil(r.total/4)));
+      for(const u of batch){
+        if(u.k==='rec'){r.ok=1;r.flags.push({c:'grn',t:'A7 enviada a Riesgos como recomendación (M2: nunca se ejecuta)'});continue}
+        if(u.k==='a5'){const ag=s.dist;const used=S.agencyA5[ag]||0;const c=CL[u.i];
+          if(used+c.saldo>60000){u.k='bl';u.why='P-03 tope diario de reprogramación de la agencia ('+ag+')'}else{S.agencyA5[ag]=used+c.saldo;u.k='ok'}}
+        if(u.k==='ok'){r.ok++;S.exec.ok++;if(u.i!=null)S.touched.add(u.i);if(S.firstAct==null){S.firstAct=S.sim;}}
+        else if(u.k==='pe'){r.pe++;S.exec.pe++;(r.held=r.held||[]).push(u.i);r.why=u.why}
+        else if(u.k==='bl'){r.bl++;S.exec.bl++;(r.held=r.held||[]).push(u.i);r.whyB=u.why;if(!S.steps.guard){S.steps.guard=true;toast(`Guardrail: ${u.why}. Acción bloqueada y escalada.`,'red')}audit('Motor de políticas','BLOQUEA',`${s.id} ${r.id} ${u.i!=null?CL[u.i].id:''}: ${u.why}`,'tag-bl')}
+      }
+      if(!r.q.length){
+        if(r.pe&&!r.flags.some(f=>f.btn))r.flags.push({c:'amb',rid:r.id,btn:true,t:`${r.id}: ${r.pe} pendiente(s) de 2.ª aprobación (${r.why})`});
+        if(r.bl&&!r.flags.some(f=>f.btn))r.flags.push({c:'red',rid:r.id,btn:true,t:`${r.id}: ${r.bl} bloqueada(s) — ${r.whyB}`});
+        else if(r.bl)r.flags.push({c:'red',t:`${r.id}: ${r.bl} bloqueada(s) — ${r.whyB}`});
+        if(r.id!=='A7')audit('Agente (M'+(CAT[r.id].m==='M4'?'4':'3')+')','Ejecuta',`${s.id} ${r.id}: ${r.ok} ok · ${r.pe} en 4-eyes · ${r.bl} bloqueadas · dry run + idempotencia`,r.bl?'tag-bl':'tag-ok');
+      }
+    }
+    if(s.run.every(r=>!r.q.length)&&!s.done){s.done=true;s.doneAt=S.sim;}
+  }
+  for(const s of S.strat){
+    if(s.state==='exec'&&s.done&&S.sim-s.doneAt>=6&&s.run.every(r=>!(r.pe||r.bl)||r.resolved||r.flags.some(f=>f.done)||S.sim-s.doneAt>=25)){
+      const g=id=>s.run.find(r=>r.id===id);const RR=rngf(s.members.length*7+s.el|0);
+      const seg=g('A4')?Math.round(g('A4').ok*(.32+RR()*.14)):0;
+      s.out={cont:g('A1')?`${Math.round(g('A1').ok*(.86+RR()*.1))}/${g('A1').total}`:'—',vis:g('A2')?`${Math.round(g('A2').ok*(.8+RR()*.15))}/${g('A2').total}`:'—',seg:g('A4')?`${seg}/${g('A4').total}`:'—',rep:g('A5')?`${g('A5').ok}/${g('A5').total}`:'—',av:s.el*((s.red[0]+s.red[1])/2/100)*3.2};
+      S.avoided+=s.out.av;s.state='mon';S.steps.kpi=true;changed=true;
+      audit('M5 Auditor','Mide',`${s.id}: resultado medido y retroalimentado a la IA · pérdida evitada ${fmtK(s.out.av)}`,'tag-ok');
+    }
+  }
+  if(changed){renderKPIs();renderBoard();renderGuide()}
+}
+setInterval(tick,1000);
+
+/* ---------- rechazo ---------- */
+function rejectModal(s){
+  const m=$('#modal');m.innerHTML=`<h2>Rechazar ${s.id}</h2><div class="sub">El motivo alimenta el aprendizaje de la IA (HU-16).</div>
+  <select id="rs"><option>Riesgo sobreestimado</option><option>Cliente ya atendido por el asesor</option><option>Acción no adecuada al negocio</option><option>Capacidad del equipo insuficiente</option><option>Otro</option></select>
+  <textarea id="rt" rows="2" placeholder="Comentario (opcional)"></textarea><div class="row" style="justify-content:flex-end"><button class="btn sec" id="rc">Cancelar</button><button class="btn danger" id="ro">Rechazar</button></div>`;
+  m.classList.add('on');$('#scrim').classList.add('on');
+  $('#rc').onclick=closeAll;$('#ro').onclick=()=>{s.state='rej';S.decided++;audit('Analista','Rechaza',`${s.id}: ${$('#rs').value}${$('#rt').value?' — '+$('#rt').value:''}`,'tag-bl');closeAll();toast('Estrategia archivada; motivo enviado a la IA');renderAll()};
+}
+
+/* ---------- ficha / modificar / what-if ---------- */
+let dS=null;
+function openDrawer(s,edit=false){
+  dS=s;S.steps.ficha=true;const d=$('#drawer');const mem=s.members.map(i=>({c:CL[i],s:SC[i],i}));
+  const c0=mem[0].c,s0=mem[0].s;const f2=score(c0,SCEN.fuerte),f1=score(c0,SCEN.moderado);
+  const avg=k=>mem.reduce((a,x)=>a+x.s[k],0)/mem.length;
+  const meter=(l,v,col,lo,hi)=>`<div class="meter"><span>${l}</span><div class="t">${lo!=null?`<s style="left:${lo*100}%;width:${(hi-lo)*100}%"></s>`:''}<i style="width:${v*100}%;background:${col}"></i></div><b>${pct(v)}</b></div>`;
+  const isC=s.scope==='cliente';
+  const mapMini=miniMap(mem);
+  const canEdit=s.state==='rev';
+  d.innerHTML=`<div class="dh"><div><div class="row"><span class="badge b-${s.lvl}">${LVL[s.lvl]}</span><span class="badge b-ia">IA · confianza ${s.conf}</span><span class="badge b-n">${s.id}</span></div><h1 style="margin-top:8px">${esc(s.title)}</h1><div class="sub">${isC?esc(c0.id)+' · ':s.members.length+' clientes · '}${esc(s.tipo)} · ${esc(s.reg)} · objetivo: ${esc(s.obj)}</div></div><button class="x" id="dx" aria-label="Cerrar">×</button></div>
+  <div class="db">
+   <div class="sec"><h3>Resumen de la IA</h3><div class="box">${isC?`Negocio de ${esc(c0.sec.toLowerCase())} en ${esc(c0.dist)}, a ${c0.dq} m de ${c0.tipo==='Huaico'?'una quebrada':'un río o dren'}, ${c0.per?'con inventario perecible':'sin inventario perecible'}, cuota/ingreso de ${pct(c0.ci)} y ${c0.seguro?'con':'sin'} seguro. Probabilidad de afectación del pago ${pct(s0.p)} (rango ${pct(s0.lo)}–${pct(s0.hi)}) en escenario ${S.scen}.`:`${s.members.length} negocios de ${esc(s.sec.toLowerCase())} en ${esc(s.dist)} sobre el umbral. Exposición media ${pct(avg('ex'))}, vulnerabilidad media ${pct(avg('vu'))}, probabilidad media de afectación del pago ${pct(avg('p'))}. Se propone acompañamiento, no restricción de crédito.`}<div class="note" style="margin-top:6px">Cada cifra proviene de los datos mostrados abajo; el LLM recibió solo IDs seudonimizados.</div></div></div>
+   <div class="sec"><h3>${isC?'Score explicable por escenario':'Composición del riesgo (promedios)'}</h3>
+     ${meter('Exposición',isC?s0.ex:avg('ex'),'var(--corriente-500)')}${meter('Vulnerabilidad',isC?s0.vu:avg('vu'),'var(--ia-500)')}${meter('Afectación pago',isC?s0.p:avg('p'),'var(--'+s.lvl+')',isC?s0.lo:null,isC?s0.hi:null)}
+     ${isC?`<div class="grid2"><div class="box"><div class="note">Moderado</div><b>${pct(f1.p)}</b> · ${LVL[f1.lvl]}</div><div class="box"><div class="note">Fuerte</div><b>${pct(f2.p)}</b> · ${LVL[f2.lvl]}</div></div>${s0.wide?'<div class="flag amb">Incertidumbre alta (ubicación de baja precisión): no elegible para M4 automático.</div>':''}`:''}
+   </div>
+   <div class="sec"><h3>Por qué ${isC?'este cliente':'este segmento'}</h3><ul class="causes" style="--lvl:var(--${s.lvl});font-size:13.5px;gap:5px">${s.causes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>
+   <div class="sec"><h3>Ubicación y capa de amenaza</h3>${mapMini}</div>
+   ${isC?`<div class="sec"><h3>Crédito</h3><div class="kv box"><span>Saldo</span><b>${fmtS(c0.saldo)}</b><span>Cuota mensual</span><b>${fmtS(c0.cuota)}</b><span>Ingreso estimado</span><b>${fmtS(c0.ingreso)}</b><span>Plazo restante</span><b>${c0.plazo} meses</b><span>Días de atraso</span><b>${c0.atraso}</b><span>Consentimiento de contacto</span><b>${c0.cons?'Sí':'No'}</b><span>Seguro</span><b>${c0.seguro?'Sí':'No'}</b></div></div>`:
+   `<div class="sec"><h3>Clientes con mayor pérdida esperada</h3><div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>Nivel</th><th class="n">Saldo</th><th class="n">Cuota/ing.</th><th class="n">Atraso</th></tr></thead><tbody>${mem.slice(0,8).map(x=>`<tr><td class="mono">${esc(x.c.id)}</td><td><span class="badge b-${x.s.lvl}">${LVL[x.s.lvl]}</span></td><td class="n">${fmtS(x.c.saldo)}</td><td class="n">${pct(x.c.ci)}</td><td class="n">${x.c.atraso} d</td></tr>`).join('')}</tbody></table></div></div>`}
+   <div class="sec"><h3>Acciones ${canEdit?'(marca para modificar)':''}</h3><div id="actEd">${s.acts.map((a,k)=>`<label class="chk"><input type="checkbox" data-k="${k}" ${a.on?'checked':''} ${canEdit&&edit?'':'disabled'}><span class="act ${CAT[a.id].m.toLowerCase()}">${a.id} ${CAT[a.id].m}</span><span>${esc(CAT[a.id].n)}<br><span class="note">${a.n>1?a.n+' clientes · ':''}${esc(a.when)} · ${esc(CAT[a.id].ap)}</span></span>${canEdit&&edit&&a.id!=='A7'?`<select data-w="${k}" aria-label="Cuándo" style="min-height:32px;padding:4px"><option ${a.when.startsWith('T-10')?'selected':''}>T-10 días</option><option ${a.when.startsWith('T-7')?'selected':''}>T-7 días</option><option ${a.when.startsWith('T-3')?'selected':''}>T-3 días</option><option ${a.when.startsWith('Cond')?'selected':''}>Condicional: alerta roja</option><option ${a.when.startsWith('Inm')?'selected':''}>Inmediato</option></select>`:'<span></span>'}</label>`).join('')}
+   ${canEdit&&edit&&isC&&!s.acts.some(a=>a.id==='A5')?`<label class="chk"><input type="checkbox" id="addA5"><span class="act m3">A5 M3</span><span>Agregar reprogramación preventiva<br><span class="note">se revalida contra guardrails al guardar</span></span><span></span></label>`:''}</div><div id="modMsg"></div></div>
+   <div class="sec whatif"><h3>Simular impacto (what-if)</h3>
+     <div class="wr"><span>Aceptación seguro</span><input type="range" id="wSeg" min="10" max="80" value="38"><b id="wSegV" style="text-align:right">38%</b></div>
+     <div class="wr"><span>Contactabilidad</span><input type="range" id="wCon" min="40" max="100" value="88"><b id="wConV" style="text-align:right">88%</b></div>
+     <div id="wOut"></div></div>
+  </div>
+  <div class="df">${canEdit?(edit?`<button class="btn primary" id="saveMod">Guardar y revalidar</button><button class="btn sec" id="dx2">Cancelar</button>`:`<button class="btn yes" id="dYes">Sí, aprobar</button><button class="btn no" id="dNo">No</button><button class="btn mod" id="dMod">Modificar</button>`):`<span class="note">Estado: ${s.state==='exec'?'en ejecución':s.state==='mon'?'monitoreo':'archivada'}. Toda acción queda en auditoría.</span>`}</div>`;
+  d.classList.add('on');$('#scrim').classList.add('on');
+  $('#dx').onclick=closeAll;if($('#dx2'))$('#dx2').onclick=closeAll;
+  if($('#dYes'))$('#dYes').onclick=()=>{closeAll();approve(s)};if($('#dNo'))$('#dNo').onclick=()=>{closeAll();rejectModal(s)};if($('#dMod'))$('#dMod').onclick=()=>openDrawer(s,true);
+  if($('#saveMod'))$('#saveMod').onclick=saveMod;
+  const wi=()=>{const sg=$('#wSeg').value/100,cn=$('#wCon').value/100;$('#wSegV').textContent=Math.round(sg*100)+'%';$('#wConV').textContent=Math.round(cn*100)+'%';
+    const elM=mem.reduce((a,x)=>a+score(x.c,SCEN.moderado).el,0),elF=mem.reduce((a,x)=>a+score(x.c,SCEN.fuerte).el,0);
+    const has=id=>s.acts.some(a=>a.id===id&&a.on);
+    const red=clamp(.04*cn+(has('A2')?.07*cn:0)+(has('A4')?.22*sg:0)+(has('A5')?.12:0)+(has('A6')?.06:0),0,.6);
+    const cost=(has('A2')?(s.acts.find(a=>a.id==='A2')||{n:0}).n*35:0)+(has('A4')?(s.acts.find(a=>a.id==='A4')||{n:0}).n*sg*18:0)+(s.acts.find(a=>a.id==='A1')||{n:0}).n*.2;
+    const mx=elF;const bar=(l,v,c)=>`<div class="wr"><span>${l}</span><div class="t"><i style="width:${v/mx*100}%;background:${c}"></i></div><b style="text-align:right">${fmtK(v)}</b></div>`;
+    $('#wOut').innerHTML=`${bar('Moderado · sin acción',elM,'var(--line)')}${bar('Moderado · con estrategia',elM*(1-red),'var(--corriente-500)')}${bar('Fuerte · sin acción',elF,'var(--line)')}${bar('Fuerte · con estrategia',elF*(1-red),'var(--corriente-700)')}<div class="note">Reducción estimada ${pct(red)} · costo operativo aprox. ${fmtK(cost)} · Monte Carlo simplificado (demo).</div>`};
+  $('#wSeg').oninput=wi;$('#wCon').oninput=wi;wi();
+}
+function saveMod(){
+  const s=dS;const on=[...document.querySelectorAll('#actEd input[data-k]')].map(x=>x.checked);
+  if(!on.some(Boolean)){$('#modMsg').innerHTML='<div class="flag red">No se guardó: una estrategia necesita al menos una acción.</div>';return}
+  const add=$('#addA5')&&$('#addA5').checked;
+  if(add){const c=CL[s.members[0]];
+    if(c.atraso>30){$('#modMsg').innerHTML=`<div class="flag red">No se guardó: P-05 — el cliente tiene ${c.atraso} días de atraso; no es elegible para reprogramación automática.</div>`;return}
+    const ex=ruleVal('noA5atraso');if(ex!=null&&c.atraso>ex){$('#modMsg').innerHTML=`<div class="flag red">No se guardó: tu regla activa excluye reprogramación con atraso > ${ex} días.</div>`;return}
+    s.acts.push({id:'A5',n:1,ids:[s.members[0]],when:'Condicional: alerta roja',on:true})}
+  s.acts.forEach((a,k)=>{if(k<on.length)a.on=on[k];const w=document.querySelector(`#actEd select[data-w="${k}"]`);if(w)a.when=w.value});
+  s.mod=true;audit('Analista','Modifica',`${s.id}: acciones ${s.acts.filter(a=>a.on).map(a=>a.id+'('+a.when+')').join(', ')} · revalidado OK`);toast('Cambios revalidados contra guardrails y guardados');closeAll();renderAll();
+}
+function closeAll(){$('#drawer').classList.remove('on');$('#modal').classList.remove('on');$('#scrim').classList.remove('on');renderGuide()}
+$('#scrim').onclick=closeAll;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
+
+/* ---------- mapa ---------- */
+const COAST=[[-3.6,-80.5],[-4.1,-81.3],[-4.7,-81.3],[-5.08,-81.12],[-5.6,-80.9],[-5.85,-81.18],[-6.1,-80.9],[-6.45,-80.3],[-6.84,-79.93],[-7.2,-79.6],[-7.42,-79.58],[-7.75,-79.42],[-8.08,-79.12],[-8.25,-78.98],[-8.7,-78.75],[-9.1,-78.6]];
+const BB={la0:-4.2,la1:-8.75,lo0:-81.35,lo1:-78.1};
+function proj(la,lo,W,H){return[(lo-BB.lo0)/(BB.lo1-BB.lo0)*W,(la-BB.la0)/(BB.la1-BB.la0)*H]}
+function distAgg(){const m={};CL.forEach((c,i)=>{const s=SC[i];const d=(m[c.dist]=m[c.dist]||{dist:c.dist,reg:c.reg,tipo:c.tipo,haz:c.haz,lat:0,lon:0,n:0,hiS:0,hiN:0,cr:0,el:0});d.n++;d.lat+=c.lat;d.lon+=c.lon;d.el+=s.el;if(s.lvl==='alto'||s.lvl==='critico'){d.hiS+=c.saldo;d.hiN++}if(s.lvl==='critico')d.cr++});
+  return Object.values(m).map(d=>({...d,lat:d.lat/d.n,lon:d.lon/d.n,lvl:d.cr/d.n>.06?'critico':d.hiN/d.n>.12?'alto':d.hiN/d.n>.04?'medio':'bajo'}))}
+function drawMap(){
+  const svg=$('#map');const W=svg.clientWidth,H=svg.clientHeight;if(!W)return;const ag=distAgg();const mx=Math.max(...ag.map(d=>d.hiS),1);
+  const land=COAST.map(p=>proj(p[0],p[1],W,H));const landPath='M'+land.map(p=>p.join(',')).join('L')+`L${W},${H}L${W},0Z`;
+  const coastPath='M'+land.map(p=>p.join(',')).join('L');
+  const band=S.alert?COAST.map(p=>proj(p[0],p[1]+.55,W,H)):[];
+  const regLbl=[['PIURA',-4.55,-80.25],['LAMBAYEQUE',-6.35,-79.05],['LA LIBERTAD',-7.45,-78.75]].map(r=>{const p=proj(r[1],r[2],W,H);return`<text x="${p[0]}" y="${p[1]}" font-size="${W<520?10:12}" fill="var(--muted)" font-weight="600" letter-spacing=".08em">${r[0]}</text>`}).join('');
+  svg.innerHTML=`<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="none"/><line x1="0" y1="0" x2="0" y2="8" stroke="#F5B83D" stroke-width="3" opacity=".45"/></pattern></defs>
+  <rect width="${W}" height="${H}" fill="var(--corriente-50)"/>
+  <text x="18" y="${H*.62}" font-size="13" fill="var(--corriente-500)" font-style="italic">Océano Pacífico</text>
+  <path d="${landPath}" fill="var(--surface)" stroke="none"/>
+  ${S.alert?`<path d="M${land.map(p=>p.join(',')).join('L')}L${band.reverse().map(p=>p.join(',')).join('L')}Z" fill="url(#hatch)"/>`:''}
+  <path d="${coastPath}" fill="none" stroke="var(--corriente-500)" stroke-width="1.5"/>
+  ${regLbl}
+  ${ag.sort((a,b)=>b.hiS-a.hiS).map(d=>{const p=proj(d.lat,d.lon,W,H);const r=4+Math.sqrt(d.hiS/mx)*(W<520?22:34);return`<g class="dg" data-d="${esc(d.dist)}" style="cursor:pointer"><circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="var(--${d.lvl})" fill-opacity=".28" stroke="var(--${d.lvl})" stroke-width="1.5"/><circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="var(--${d.lvl})"/></g>`}).join('')}
+  ${(()=>{const placed=[];return ag.filter(d=>d.hiN>=10||['Piura','Chiclayo','Trujillo'].includes(d.dist)).map(d=>{const p=proj(d.lat,d.lon,W,H);const w=d.dist.length*6.6;let y=p[1]-8,x=p[0]+8;for(let k=0;k<6&&placed.some(q=>Math.abs(q[0]-x)<Math.max(q[2],w)&&Math.abs(q[1]-y)<14);k++)y+=15;placed.push([x,y,w]);return{d,x,y}})})().map(({d,x,y})=>{return`<text x="${x}" y="${y}" font-size="11.5" fill="var(--ink)" font-weight="600" paint-order="stroke" stroke="var(--surface)" stroke-width="3">${esc(d.dist)}</text>`}).join('')}
+  ${S.alert?`<g transform="translate(${W-214},14)"><rect width="200" height="44" rx="8" fill="var(--sol-100)" stroke="#F5B83D"/><text x="10" y="18" font-size="11.5" font-weight="700" fill="var(--sol-900)">Aviso ENFEN · costa norte</text><text x="10" y="34" font-size="11" fill="var(--sol-900)">Lluvias intensas · pico en ${S.scen==='fuerte'?9:12} días</text></g>`:''}`;
+  svg.querySelectorAll('.dg').forEach(g=>{const d=ag.find(x=>x.dist===g.dataset.d);
+    g.onmousemove=e=>{const t=$('#tip');const r=$('#mapFig').getBoundingClientRect();t.style.display='block';t.style.left=Math.min(e.clientX-r.left+12,r.width-230)+'px';t.style.top=(e.clientY-r.top+12)+'px';t.innerHTML=`<b>${esc(d.dist)}</b> · ${esc(d.reg)}<br>${esc(d.tipo)} · peligro ${pct(d.haz)}<br>${d.hiN} clientes alto/crítico · ${fmtK(d.hiS)}<br>Pérdida esperada ${fmtK(d.el)}`};
+    g.onmouseleave=()=>$('#tip').style.display='none';
+    g.onclick=()=>{S.filter={reg:'',sec:'',lvl:'',dist:d.dist};$('#fReg').value='';location.hash='tablero';toast('Tablero filtrado por '+d.dist)}});
+  $('#distTbl').innerHTML=`<thead><tr><th>Distrito</th><th>Amenaza</th><th class="n">Alto/crít.</th><th class="n">Saldo</th></tr></thead><tbody>${ag.sort((a,b)=>b.hiS-a.hiS).slice(0,10).map(d=>`<tr><td><span class="badge b-${d.lvl}">${LVL[d.lvl]}</span> ${esc(d.dist)}</td><td>${esc(d.tipo)}</td><td class="n">${d.hiN}</td><td class="n">${fmtK(d.hiS)}</td></tr>`).join('')}</tbody>`;
+}
+const mapRO=new ResizeObserver(()=>{if(curView==='mapa')drawMap()});mapRO.observe($('#mapFig'));
+function miniMap(mem){
+  const W=500,H=170;const la=mem.reduce((a,x)=>a+x.c.lat,0)/mem.length,lo=mem.reduce((a,x)=>a+x.c.lon,0)/mem.length;const sc=2600;
+  const pts=mem.slice(0,60).map(x=>[W/2+(x.c.lon-lo)*sc,H/2-(x.c.lat-la)*sc,x.s.lvl]);
+  const isH=mem[0].c.tipo==='Huaico';
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)" role="img" aria-label="Mapa de ubicación">
+  <path d="M0,${H*.7} C${W*.25},${H*.45} ${W*.55},${H*.85} ${W},${H*.35} L${W},${H*.55} C${W*.6},${H} ${W*.3},${H*.6} 0,${H*.92}Z" fill="var(--${isH?'alto':'corriente-300'})" opacity=".22"/>
+  <path d="M0,${H*.8} C${W*.25},${H*.55} ${W*.55},${H*.95} ${W},${H*.45}" stroke="var(--corriente-500)" stroke-width="3" fill="none" ${isH?'stroke-dasharray="7 5"':''}/>
+  ${pts.map(p=>`<circle cx="${clamp(p[0],8,W-8)}" cy="${clamp(p[1],8,H-8)}" r="5" fill="var(--${p[2]})" stroke="var(--surface)" stroke-width="1.5"/>`).join('')}
+  <text x="10" y="18" font-size="12" fill="var(--muted)">${esc(mem[0].c.dist)} · capa SIGRID: ${isH?'movimientos en masa (quebrada)':'inundación'}</text></svg>`;
+}
+
+/* ---------- reglas en lenguaje natural ---------- */
+const EX=['no reprogramar a quien tenga más de 30 días de atraso','priorizar agricultores de arroz en Lambayeque','máximo 10 visitas por asesor por semana','preferir microseguro antes que reprogramación para riesgo alto','contactar al 80% de riesgo alto antes del 20/12','negar crédito nuevo en zonas de huaico'];
+$('#ex').innerHTML=EX.map(e=>`<button class="chip">${esc(e)}</button>`).join('');
+$('#ex').onclick=e=>{const b=e.target.closest('.chip');if(b){$('#nl').value=b.textContent;parseNL()}};
+function parseNL(){
+  const t=$('#nl').value.trim().toLowerCase();const o=$('#parseOut');if(!t){o.innerHTML='';return}
+  let m,rule=null,json=null,impact='';
+  const risky=CL.map((c,i)=>({c,s:SC[i]})).filter(x=>x.s.lvl==='alto'||x.s.lvl==='critico');
+  if(/(negar|reducir|rechaz|restring|bloque|cortar).*(cr[eé]dito|pr[eé]stamo)/.test(t)){
+    o.innerHTML=`<div class="flag red" style="flex-direction:column;align-items:flex-start"><b>Regla rechazada por política institucional P-06 (equidad e inclusión)</b><span>WENANCE.AI no puede proponer reducir o negar crédito por la sola ubicación en zona de riesgo. Alternativa sugerida: "priorizar microseguro y visitas en zonas de huaico".</span></div>`;
+    audit('Motor de políticas','Rechaza regla',`"${t}" contradice P-06`,'tag-bl');return}
+  if((m=t.match(/no\s+(reprogram\w*|dar periodo de gracia).*?(\d+)\s*d[ií]as/))){const n=+m[2];rule={k:'noA5atraso',v:n,t:`No proponer reprogramación (A5) si atraso > ${n} días`};json={tipo:'elegibilidad',accion:'A5',condicion:`dias_atraso > ${n}`,efecto:'excluir'};impact=risky.filter(x=>x.c.atraso>n&&x.c.ci>.3).length}
+  else if((m=t.match(/prioriz\w*\s+(?:a\s+)?(?:los\s+)?(agricultor\w*|comerci\w*|bodeg\w*|ganad\w*|pesc\w*|transport\w*|mototax\w*)(?:\s+de\s+(\w+))?(?:\s+en\s+([a-záéíóúñ ]+))?/))){
+    const map={agricultor:'agricultura',comerci:'comercio',bodeg:'bodega',ganad:'ganadería',pesc:'pesca',transport:'transporte',mototax:'mototaxi'};let sec=Object.entries(map).find(([k])=>m[1].startsWith(k))[1];
+    if(m[2]&&sec==='agricultura')sec=m[2].startsWith('arroz')?'arroz':m[2].startsWith('mango')||m[2].startsWith('lim')?'mango':sec;
+    const rg=m[3]?['piura','lambayeque','la libertad'].find(r=>m[3].trim().startsWith(r)):null;const reg=rg?rg.replace(/\b\w/g,c=>c.toUpperCase()):null;
+    rule={k:'prio',v:{sec,reg},t:`Priorizar ${sec}${reg?' en '+reg:''}`};json={tipo:'priorizacion',segmento:{sector_contiene:sec,region:reg},peso:3};impact=risky.filter(x=>x.c.sec.toLowerCase().includes(sec)&&(!reg||x.c.reg===reg)).length}
+  else if((m=t.match(/m[aá]x\w*\s+(\d+)\s+visitas/))){const n=+m[1];rule={k:'cap',v:n,t:`Máximo ${n} visitas por asesor por semana`};json={tipo:'capacidad',accion:'A2',limite:n,por:'asesor/semana'};impact=risky.filter(x=>x.s.lvl==='critico').length}
+  else if(/prefer\w*\s+(micro)?seguro/.test(t)){rule={k:'prefSeg',v:true,t:'Preferir microseguro antes que reprogramación (A5 solo en crítico)'};json={tipo:'preferencia',preferir:'A4',sobre:'A5',aplica_a:'nivel != critico'};impact=risky.filter(x=>x.s.lvl==='alto'&&x.c.ci>.3).length}
+  else if((m=t.match(/contactar\s+al\s+(\d+)\s*%.*?(alto|cr[ií]tico)/))){const n=+m[1];rule={k:'kpi',v:n,t:`Objetivo: contactar al ${n}% de riesgo ${m[2]} antes de la fecha`};json={tipo:'kpi_objetivo',metrica:'cobertura_preventiva',meta:n/100,horizonte:'antes del pico'};impact=risky.length}
+  else if(/sin consentimiento/.test(t)){o.innerHTML='<div class="flag grn">Ya cubierta por la política institucional P-07. No es necesario crear la regla.</div>';return}
+  if(!rule){o.innerHTML=`<div class="flag amb" style="flex-direction:column;align-items:flex-start"><b>La IA necesita una aclaración</b><span>¿Qué quieres hacer?</span><div class="chips">${EX.slice(0,4).map(e=>`<button class="chip" data-c="${esc(e)}">${esc(e)}</button>`).join('')}</div></div>`;
+    o.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{$('#nl').value=b.dataset.c;parseNL()});return}
+  S.pending=rule;
+  o.innerHTML=`<div class="sec"><div class="row"><span class="badge b-ia">Traducción IA</span><span class="badge b-bajo">Validada contra políticas P-01…P-09</span></div><pre>${esc(JSON.stringify(json,null,2))}</pre>
+  <div class="flag amb"><span>Vista previa: afecta a <b>${impact}</b> cliente(s) en riesgo alto/crítico${S.alert?'':' (sin alerta activa, se aplicará cuando haya)'}.</span></div>
+  <div class="row"><button class="btn primary" id="okRule">Confirmar y activar</button><button class="btn sec" id="noRule">Descartar</button></div></div>`;
+  $('#okRule').onclick=()=>{const r=S.pending;const ex=S.rules.find(x=>x.k===r.k);const id=ex?ex.id:'R-0'+(13+S.rules.length);if(ex)S.rules=S.rules.filter(x=>x!==ex);
+    S.rules.unshift({id,t:r.t,k:r.k,v:r.v,a:'Ana Ruiz',d:'15/12/2026 '+hhmm(S.sim),ver:ex?ex.ver+1:1});
+    if(r.k==='kpi')S.kpis.unshift({n:`Contactar al ${r.v}% de riesgo alto antes del pico`,g:r.v,f:'cov'});
+    audit('Analista','Regla',`${id} v${ex?ex.ver+1:1}: ${r.t}`);S.steps.rule=true;
+    const t0=performance.now();const n=S.alert?regenerate(id):0;const dt=((performance.now()-t0)/1000+.4).toFixed(1);
+    o.innerHTML=`<div class="flag grn">Regla ${id} activa.${S.alert?` La IA regeneró las estrategias en ${dt} s: ${n} cambiaron (resaltadas en el tablero).`:''}</div>`;$('#nl').value='';
+    if(S.alert)toast(`IA regeneró las estrategias: ${n} cambiaron por ${id}`,'ia');renderAll()};
+  $('#noRule').onclick=()=>{o.innerHTML='';S.pending=null};
+}
+$('#parseBtn').onclick=parseNL;$('#nl').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();parseNL()}});
+function renderRules(){
+  $('#rulesList').innerHTML=S.rules.map(r=>`<div class="rule"><span class="id">${r.id}</span><div>${esc(r.t)}<small>${esc(r.a)} · ${esc(r.d)} · versión ${r.ver}</small></div><button class="btn ghost sm" data-del="${r.id}">Desactivar</button></div>`).join('')||'<div class="note">Sin reglas del analista.</div>';
+  $('#rulesList').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.rules=S.rules.filter(r=>r.id!==b.dataset.del);audit('Analista','Regla',`${b.dataset.del} desactivada`);if(S.alert){const n=regenerate(b.dataset.del+' desactivada');toast(`IA regeneró: ${n} estrategias cambiaron`,'ia')}renderAll()});
+  const val=f=>{if(f==='cov')return kpiData().cov;if(f==='reprog'){const k=kpiData();const rep=S.strat.filter(s=>s.run).reduce((a,s)=>{const r=s.run.find(x=>x.id==='A5');return a+(r?r.ids.slice(0,r.ok).reduce((b,i)=>b+CL[i].saldo,0):0)},0);return k.expS?rep/k.expS:0}
+    if(f==='agroSeg'){const ag=CL.map((c,i)=>i).filter(i=>CL[i].reg==='Lambayeque'&&CL[i].sec.startsWith('Agri'));const done=new Set(S.strat.filter(s=>s.run).flatMap(s=>{const r=s.run.find(x=>x.id==='A4');return r?r.ids.slice(0,Math.round(r.ok*.38)):[]}));return ag.filter(i=>CL[i].seguro||done.has(i)).length/ag.length}return 0};
+  $('#kpiList').innerHTML=S.kpis.map(k=>{const v=val(k.f);return`<div class="kpirow"><span>${esc(k.n)}</span><div class="pbar" title="meta ${k.g}%"><i style="width:${clamp(v/(k.g/100),0,1)*100}%"></i></div><b style="text-align:right">${pct(v)}<span class="note"> / ${k.g}%</span></b></div>`}).join('');
+  $('#polTbl').innerHTML=POL.map(p=>`<tr><td class="mono">${p[0]}</td><td>${esc(p[1])}</td></tr>`).join('');
+}
+$('#kpiAdd').onclick=()=>{const n=$('#kpiName').value.trim(),g=parseFloat($('#kpiGoal').value);if(!n||!(g>0)){toast('Escribe un nombre y una meta en %');return}S.kpis.push({n,g,f:'cov'});audit('Analista','KPI',`Nuevo KPI: ${n} (meta ${g}%)`);$('#kpiName').value='';$('#kpiGoal').value='';renderRules()};
+
+/* ---------- agente ---------- */
+const MODES=[['M0','Observador','Lee fuentes climáticas y cartera'],['M1','Diagnóstico','Calcula y explica el riesgo'],['M2','Recomendador','Propone estrategias'],['M3','Copiloto','Ejecuta tras aprobación'],['M4','Ejecutor acotado','Automático en bajo riesgo'],['M5','Auditor','Registra y explica todo']];
+function renderAgent(){
+  $('#modes').innerHTML=MODES.map(m=>{const off=S.kill&&(m[0]==='M3'||m[0]==='M4');return`<div class="md ${off?'off':'act'}"><b>${m[0]}</b><span style="font-weight:600">${m[1]}</span><span class="note">${m[2]}</span><span class="badge ${off?'b-critico':'b-bajo'}" style="align-self:flex-start">${off?'Suspendido':'Activo'}</span></div>`}).join('');
+  $('#log').innerHTML=S.log.length?S.log.map(l=>`<div><span>${l.t}</span><span class="${l.cls}">${esc(l.actor)}</span><span><b class="${l.cls}">${esc(l.tipo)}</b> · ${esc(l.det)}</span><span class="h">#${l.h}</span></div>`).join(''):'<div class="note">Sin eventos todavía.</div>';
+  $('#chain').textContent=`${S.log.length} eventos · hash encadenado`;
+  $('#catTbl').innerHTML=Object.entries(CAT).map(([k,v])=>`<tr><td class="mono">${k}</td><td>${esc(v.n)}<div class="note">Riesgo ${v.r}</div></td><td><span class="act ${v.m.toLowerCase()}">${v.m}</span></td><td>${esc(v.ap)}</td></tr>`).join('');
+}
+
+/* ---------- guía de demo ---------- */
+function renderGuide(){
+  const st=[['alert','Simular alerta ENFEN'],['ficha','Abrir ficha: ¿por qué?'],['rule','Crear regla en lenguaje natural'],['approve','Aprobar (Sí)'],['guard','Ver un guardrail bloquear'],['kpi','KPIs y resultado medidos']];
+  const now=st.find(s=>!S.steps[s[0]]);
+  $('#guide').innerHTML='<b style="white-space:nowrap;margin-right:6px">Demo</b>'+st.map((s,i)=>`<span class="st ${S.steps[s[0]]?'done':now&&now[0]===s[0]?'now':''}"><i>${S.steps[s[0]]?'✓':i+1}</i>${s[1]}</span>`).join('<span class="sep">›</span>')+'<span class="spacer"></span><button class="btn ghost sm" id="reset" style="white-space:nowrap">Reiniciar demo</button>';
+  $('#reset').onclick=()=>location.reload();
+}
+
+/* ---------- navegación y controles ---------- */
+let curView='tablero';
+function route(){const v=(location.hash||'#tablero').slice(1);curView=['tablero','mapa','reglas','agente'].includes(v)?v:'tablero';
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+curView));document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===curView));renderAll()}
+window.addEventListener('hashchange',route);
+function renderAll(){renderKPIs();renderGuide();if(curView==='tablero')renderBoard();if(curView==='mapa')drawMap();if(curView==='reglas')renderRules();if(curView==='agente')renderAgent()}
+$('#fSec').innerHTML='<option value="">Todos los sectores</option>'+SEC.map(s=>`<option>${esc(s[0])}</option>`).join('');
+$('#fReg').onchange=e=>{S.filter.reg=e.target.value;S.filter.dist='';renderAll()};$('#fSec').onchange=e=>{S.filter.sec=e.target.value;renderAll()};$('#fLvl').onchange=e=>{S.filter.lvl=e.target.value;renderAll()};
+$('#scM').onclick=()=>setScen('moderado');$('#scF').onclick=()=>setScen('fuerte');
+$('#roleA').onclick=()=>{S.role='A';$('#roleA').classList.add('on');$('#roleJ').classList.remove('on');renderAll()};
+$('#roleJ').onclick=()=>{S.role='J';$('#roleJ').classList.add('on');$('#roleA').classList.remove('on');toast('Rol: Jefe de riesgos. Puedes autorizar o rechazar acciones en 4-eyes o bloqueadas.');renderAll()};
+$('#killBtn').onclick=()=>{S.kill=!S.kill;$('#killBtn').classList.toggle('on',S.kill);$('#killBtn').textContent=S.kill?'Reanudar agente':'Kill switch';$('#modeChip').classList.toggle('safe',S.kill);$('#modeTxt').textContent=S.kill?'Modo seguro · solo recomienda':'Agente: M4 acotado';
+  if(S.kill){const rev=S.strat.filter(s=>s.state==='exec'&&!s.done).reduce((a,s)=>a+s.run.filter(r=>r.id==='A3').reduce((b,r)=>b+r.q.length,0),0);audit(S.role==='A'?'Analista':'Jefe de riesgos','KILL SWITCH',`Agente en Modo seguro: ejecución suspendida; ${rev} etiquetas A3 pendientes no se aplicarán`,'tag-bl');toast('Kill switch activado: el agente bajó a M2 y suspendió la ejecución','red')}
+  else{audit(S.role==='A'?'Analista':'Jefe de riesgos','Reanuda','Agente vuelve a M4 acotado');toast('Agente reanudado')}renderAll()};
+$('#clock').textContent='Lun 15 dic · '+hhmm(S.sim);
+audit('M0 Monitor','Ingesta','SENAMHI, ENFEN y SIGRID sin cambios significativos');
+route();
+}
+</script>
+</body>
+</html>

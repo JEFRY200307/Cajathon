@@ -1,0 +1,44 @@
+flowchart TB
+    ORQ["<b>Orquestador agéntico</b><br/><i>[Contenedor]</i><br/>plan propuesto"]:::ai
+    API["<b>API Backend</b><br/><i>[Contenedor]</i><br/>decisiones del analista y 2.ª aprobación"]:::container
+    subgraph POL["Motor de políticas — componentes"]
+        PDP["<b>Punto de decisión (PDP)</b><br/><i>[OPA · Rego]</i><br/>permitir · pedir aprobación · bloquear"]:::guard
+        MODE["<b>Asignador de modo</b><br/>M0–M5 por riesgo y confianza;<br/>nunca lo decide el LLM"]:::guard
+        LIM["<b>Servicio de límites</b><br/>monto · cliente · día · agencia ·<br/>% cartera · mensajes/semana"]:::guard
+        EQ["<b>Guardrail de equidad</b><br/>no negar crédito por ubicación"]:::guard
+        FE["<b>Gestor 4-eyes</b><br/>A5 sobre umbral y toda A6"]:::human
+        KS["<b>Kill switch</b><br/>global y por lote → Modo seguro"]:::guard
+    end
+    subgraph EXE["Ejecutor de acciones — componentes"]
+        Q["<b>Cola de lotes</b><br/>lotes pequeños"]:::comp
+        DRY["<b>Dry run</b><br/>simula contra el core"]:::comp
+        IDEM["<b>Llave de idempotencia</b>"]:::comp
+        REH["<b>Rehidratador PII</b><br/>único punto con datos personales"]:::comp
+        ADP["<b>Adaptadores</b><br/>Core · Mensajería · CRM · Seguros"]:::comp
+        RB["<b>Rollback</b><br/>acciones reversibles"]:::comp
+    end
+    VAULT[("<b>Bóveda de identidad</b><br/><i>[tabla cifrada]</i>")]:::db
+    CORE["<b>Core bancario sandbox</b><br/><i>[Externo]</i>"]:::ext
+    CH["<b>SMS / WhatsApp · CRM</b><br/><i>[Externo]</i>"]:::ext
+    AUD[("<b>Log de auditoría</b><br/><i>[append-only]</i>")]:::db
+
+    ORQ --> PDP
+    PDP --- MODE & LIM & EQ
+    PDP -- "requiere 4-eyes o bloqueada" --> FE
+    KS -. "suspende" .-> Q
+    PDP -- "plan autorizado" --> Q --> DRY --> IDEM -- "permitido" --> REH --> ADP
+    REH --> VAULT
+    ADP --> CORE & CH
+    ADP -. "error" .-> RB
+    FE -- "escala / notifica" --> API
+    ADP -- "resultado" --> AUD
+    classDef person fill:#0B5D66,stroke:#073E44,color:#FFFFFF,stroke-width:1.5px
+    classDef system fill:#0E7C86,stroke:#073E44,color:#FFFFFF,stroke-width:2px
+    classDef container fill:#E3F2F3,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef comp fill:#FFFFFF,stroke:#0E7C86,color:#0F1C20,stroke-width:1.3px
+    classDef ext fill:#EEF1F1,stroke:#8A9A9E,color:#3C4B50,stroke-width:1.2px,stroke-dasharray:5 3
+    classDef db fill:#FFFFFF,stroke:#0B5D66,color:#0F1C20,stroke-width:1.5px
+    classDef ai fill:#ECE9FC,stroke:#5B4BDB,color:#1E1650,stroke-width:1.5px
+    classDef guard fill:#FDECEC,stroke:#C42B3B,color:#5A0F17,stroke-width:1.6px
+    classDef human fill:#FFF4DC,stroke:#C98A0B,color:#4A3206,stroke-width:1.5px
+    classDef ok fill:#E4F4EC,stroke:#2F9E6B,color:#0E3B26,stroke-width:1.4px
